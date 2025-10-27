@@ -200,8 +200,65 @@
             background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
             color: white !important;
             border-radius: 8px 8px 0 0;
-            transform: translateY(-2px);
             box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Perfect navigation tab alignment with equal spacing */
+        .navigation-tabs-container {
+            display: flex;
+            width: 100%;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .navigation-tab-button {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: white;
+            border: none;
+            color: #6b7280;
+        }
+
+        .navigation-tab-button:hover:not(.active) {
+            color: #374151;
+            border-bottom-color: #d1d5db;
+            background: #f9fafb;
+        }
+
+        .navigation-tab-button.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .navigation-tab-button .tab-icon {
+            margin-right: 0.5rem;
+        }
+
+        /* Fix navigation tab container positioning */
+        .bg-white.rounded-lg.shadow.mb-8 {
+            margin-top: 0 !important;
+            margin-bottom: 2rem !important;
+        }
+
+        /* Tab button positioning */
+        nav button {
+            position: relative !important;
+            transform: none !important;
+        }
+
+        nav button.nav-tab.active {
+            transform: none !important;
         }
 
         /* Enhanced black cards with gradients for elegant look */
@@ -292,14 +349,39 @@
             color: #ffffff !important;
         }
 
-        /* Specific fixes for priority and status badges */
-        .priority-1, .priority-2, .priority-3, .priority-4,
+        /* Consistent styling for ALL priority values (1-5) and status badges */
+        .priority-1, .priority-2, .priority-3, .priority-4, .priority-5,
         .severity-high, .severity-medium, .severity-low,
         .status-closed, .status-new, .status-active, .status-resolved {
             background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
             color: #ffffff !important;
-            border: 2px solid #4b5563 !important;
+            border: 2px solid #60a5fa !important;
             font-weight: 600 !important;
+            border-radius: 4px !important;
+            padding: 4px 8px !important;
+            display: inline-block !important;
+        }
+
+        /* Additional comprehensive priority coverage for any missed values */
+        [class*="priority-"], .px-2.py-1.rounded.font-medium[class*="priority"] {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            color: #ffffff !important;
+            border: 2px solid #60a5fa !important;
+            font-weight: 600 !important;
+            border-radius: 4px !important;
+            padding: 4px 8px !important;
+            display: inline-block !important;
+        }
+
+        /* Specific inline style overrides for priority badges */
+        span[class*="priority-"] {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            color: #ffffff !important;
+            border: 2px solid #60a5fa !important;
+            font-weight: 600 !important;
+            border-radius: 4px !important;
+            padding: 4px 8px !important;
+            display: inline-block !important;
         }
 
         /* Override any remaining light backgrounds */
@@ -333,15 +415,77 @@
             font-weight: 600 !important;
         }
 
-        /* Enhanced buttons */
+        /* Enhanced buttons with ultra-high visibility */
         button {
             transition: all 0.3s ease !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6) !important;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            border: 3px solid #1e40af !important;
+            padding: 12px 24px !important;
+            border-radius: 8px !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+            min-height: 44px !important;
         }
 
         button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.8) !important;
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+            border-color: #3730a3 !important;
+            glow: 0 0 15px rgba(59, 130, 246, 0.7) !important;
+        }
+
+        button:active:not(:disabled) {
             transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.6) !important;
+        }
+
+        button:disabled {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+            color: #d1d5db !important;
+            border-color: #6b7280 !important;
+            cursor: not-allowed !important;
+            opacity: 0.7 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        }
+
+        /* Specific button color overrides */
+        .bg-blue-600, .bg-purple-600, .bg-red-600 {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            border: 3px solid #1e40af !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6) !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+        }
+
+        .bg-blue-600:hover, .bg-purple-600:hover, .bg-red-600:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.8) !important;
+            border-color: #3730a3 !important;
+        }
+
+        /* Special styling for the Find Duplicates button */
+        button[class*="bg-blue"], button[disabled]:not([disabled="false"]) {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+            border: 3px solid #1e40af !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6) !important;
+        }
+
+        /* Ensure all clickable buttons have maximum visibility */
+        [role="button"], input[type="button"], input[type="submit"] {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            border: 3px solid #1e40af !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6) !important;
+            padding: 12px 24px !important;
+            border-radius: 8px !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
         }
 
         /* Main container styling */
@@ -362,25 +506,284 @@
             margin-top: auto;
         }
 
-        /* Ensure body and html take full height */
+        /* Ensure body and html take full height and allow dynamic growth */
         html, body {
-            height: 100%;
+            height: auto;
+            min-height: 100vh;
         }
 
-        /* Main app container flex layout */
+        /* Main app container flex layout - allow dynamic height */
+        #root {
+            min-height: 100vh;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Content area should grow to push footer down and expand dynamically */
+        .main-content-wrapper {
+            flex: 1;
+            padding: 0;
+        }
+
+        /* Main content container should expand properly */
+        .max-w-7xl {
+            width: 100%;
+            max-width: 80rem;
+            margin: 0 auto;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        /* Proper spacing for the main content area */
+        .py-8 {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+
+        /* Reset all default margins and padding */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Ensure proper height and spacing */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Root container should fill viewport */
         #root {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            margin: 0;
+            padding: 0;
         }
 
-        /* Content area should grow to push footer down */
-        .main-content-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+        /* Header with proper spacing */
+        header {
+            flex-shrink: 0;
+            height: 64px;
+            min-height: 64px;
         }
 
+        /* Footer with proper spacing */
+        footer {
+            flex-shrink: 0;
+            height: auto;
+            min-height: 60px;
+            margin-top: auto;
+        }
+
+        /* COMPREHENSIVE TEXT VISIBILITY FIXES - Ensure all text is visible across ALL tabs */
+        
+        /* Force visibility on ALL text elements */
+        *, *::before, *::after {
+            color: #ffffff !important;
+        }
+        
+        /* Specific overrides for different element types */
+        p, span, div, a, li, td, th, label, option, input, textarea, select,
+        h1, h2, h3, h4, h5, h6 {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+
+        /* Ensure ALL content in cards is visible */
+        .border, .border-gray-200, .rounded-lg, .p-4, .mb-3, .space-y-4 {
+            color: #ffffff !important;
+        }
+
+        /* Force all nested elements to be white */
+        div > *, span > *, p > *, a > *, li > *, td > *, th > *, 
+        label > *, h1 > *, h2 > *, h3 > *, h4 > *, h5 > *, h6 > * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+
+        /* Duplicate detection results text visibility */
+        .space-y-4 > div > *, .border-gray-200 > *, .rounded-lg > * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+
+        /* Bug card content visibility */
+        .border.border-gray-200.rounded-lg.p-4 *, 
+        .border.border-gray-200.rounded-lg.p-4 > * > *,
+        .border.border-gray-200.rounded-lg.p-4 > * > * > * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+
+        /* AI Response content visibility */
+        .bg-white.p-6.rounded-lg.shadow *, 
+        .bg-white.p-6.rounded-lg.shadow > * > *,
+        .bg-white.p-6.rounded-lg.shadow > * > * > * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+
+        /* Match percentage and reasoning text */
+        .px-3.py-1, .text-sm, .font-medium, .mb-3, .text-gray-600, .text-gray-500 {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+        
+        /* Headers should be more prominent */
+        h1, h2, h3, h4, h5, h6 {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+        }
+        
+        /* Links should be visible and distinct */
+        a {
+            color: #60a5fa !important;
+            font-weight: 600 !important;
+        }
+        
+        a:hover {
+            color: #93c5fd !important;
+        }
+        
+        /* Form elements text */
+        input, textarea, select, option {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Table text */
+        table, td, th, tr {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Loading and status text */
+        .loading-spinner + span {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+        
+        /* Chart labels and text */
+        canvas + div, canvas ~ div {
+            color: #ffffff !important;
+        }
+        
+        canvas + div *, canvas ~ div * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* All children of containers should be white */
+        .bg-white > *, .bg-gray-50 > *, .bg-blue-50 > *,
+        .bg-green-50 > *, .bg-yellow-50 > *, .bg-red-50 > *,
+        .bg-amber-50 > *, .bg-purple-50 > *, .bg-indigo-50 > *,
+        .bg-pink-50 > *, .bg-cyan-50 > *, .bg-emerald-50 > *,
+        .bg-orange-50 > *, .bg-lime-50 > *, .bg-teal-50 > *,
+        .bg-slate-50 > * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Nested children visibility */
+        div[class*="bg-"] > * > *, div[class*="bg-"] > * > * > *,
+        div[class*="bg-"] > * > * > * > *, div[class*="bg-"] > * > * > * > * > * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Cards and containers - all nested content */
+        .bug-card *, .bug-card > * > *, .bug-card > * > * > * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Specific fixes for commonly invisible elements */
+        .text-xs, .text-sm, .text-base, .text-lg, .text-xl, .text-2xl, .text-3xl {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Override any Tailwind color classes that might make text invisible */
+        .text-black, .text-gray-900, .text-gray-800, .text-gray-700, 
+        .text-gray-600, .text-gray-500, .text-gray-400, .text-gray-300 {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+        
+        /* Navigation and tabs */
+        nav *, .nav-tab *, button[class*="border-"] * {
+            color: inherit !important;
+        }
+        
+        /* Active tab text should remain as designed */
+        .nav-tab.active, .nav-tab.active *, 
+        button[class*="border-blue-500"], button[class*="border-blue-500"] *,
+        button[class*="text-blue-600"], button[class*="text-blue-600"] * {
+            color: inherit !important;
+        }
+        
+        /* Button text should remain white as designed */
+        button, button *, input[type="submit"], input[type="button"] {
+            color: #ffffff !important;
+            font-weight: 800 !important;
+        }
+        
+        /* Ensure all dashboard content is visible */
+        .grid > div *, .space-y-6 > div *, .space-y-4 > div * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Analytics charts and content */
+        canvas + div span, .mt-4 span, .flex span {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Help content visibility */
+        .space-y-4 p, .space-y-4 li, .space-y-4 ul {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* AI Assistant content */
+        .ai-response, .ai-response * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Footer text should be darker as it's on light background */
+        footer, footer * {
+            color: #6b7280 !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Header text should be darker as it's on light background */
+        header, header * {
+            color: #1f2937 !important;
+            font-weight: 500 !important;
+        }
+        
+        /* Navigation tabs text color handling */
+        nav button:not(.nav-tab.active) {
+            color: #6b7280 !important;
+        }
+        
+        nav button:not(.nav-tab.active):hover {
+            color: #374151 !important;
+        }
+        
+        /* Project selector text should be white */
+        .bg-white select, .bg-white select option,
+        .bg-white input, .bg-white textarea {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+        
         /* Subtle animations */
         @keyframes fadeInUp {
             from {
@@ -433,7 +836,7 @@
         const LoadingSpinner = () => (
             <div className="flex justify-center items-center p-4">
                 <div className="loading-spinner"></div>
-                <span className="ml-2 text-gray-600">Loading...</span>
+                <span className="ml-2" style={{color: '#ffffff !important', fontWeight: '700 !important', fontSize: '14px'}}>Loading...</span>
             </div>
         );
 
@@ -753,18 +1156,60 @@
                             </div>
                             <div className="p-4 space-y-4">
                                 {duplicates.map((duplicate, index) => (
-                                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-800" style={{backgroundColor: '#374151 !important'}}>
                                         <div className="flex justify-between items-start mb-3">
-                                            <h4 className="text-lg font-medium text-blue-600">
+                                            <h4 className="text-lg font-medium" style={{color: '#60a5fa !important', fontWeight: '700 !important'}}>
                                                 #{duplicate.bug_id} - {duplicate.title}
                                             </h4>
-                                            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                                {Math.round(duplicate.similarity * 100)}% Match
+                                            <span className="px-3 py-1 rounded-full text-sm font-medium" style={{backgroundColor: '#3b82f6 !important', color: '#ffffff !important', fontWeight: '800 !important'}}>
+                                                {(() => {
+                                                    // Handle different possible similarity field names and formats
+                                                    let similarity = duplicate.similarity || duplicate.similarity_score || duplicate.match_percentage || duplicate.confidence;
+                                                    
+                                                    // Debug log to see the actual data structure
+                                                    console.log('Duplicate object:', duplicate);
+                                                    
+                                                    if (similarity !== undefined && similarity !== null && !isNaN(similarity)) {
+                                                        // If similarity is already a percentage (>1), use as-is
+                                                        if (similarity > 1) {
+                                                            return Math.round(similarity);
+                                                        }
+                                                        // If similarity is a decimal (0-1), convert to percentage
+                                                        else {
+                                                            return Math.round(similarity * 100);
+                                                        }
+                                                    }
+                                                    
+                                                    // Fallback: try to parse from reasoning text if it contains percentage
+                                                    if (duplicate.explanation && duplicate.explanation.includes('match')) {
+                                                        const percentageMatch = duplicate.explanation.match(/(\d+)%/);
+                                                        if (percentageMatch) {
+                                                            return parseInt(percentageMatch[1]);
+                                                        }
+                                                    }
+                                                    
+                                                    // If it's a "direct match", assume high similarity
+                                                    if (duplicate.explanation && duplicate.explanation.toLowerCase().includes('direct match')) {
+                                                        return 95;
+                                                    }
+                                                    
+                                                    // Default fallback
+                                                    return 'N/A';
+                                                })()}% Match
                                             </span>
                                         </div>
-                                        <p className="text-gray-600 mb-3">{duplicate.description}</p>
-                                        <div className="text-sm text-gray-500">
-                                            <span className="font-medium">Reasoning:</span> {duplicate.explanation}
+                                        <div className="mb-3" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                            {duplicate.description && duplicate.description.includes('<') ? (
+                                                <div dangerouslySetInnerHTML={{ __html: duplicate.description }} style={{color: '#ffffff !important'}} />
+                                            ) : (
+                                                <span style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                    {duplicate.description || 'No description available'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                            <span className="font-medium" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>Reasoning:</span> 
+                                            <span style={{color: '#ffffff !important', fontWeight: '500 !important'}}> {duplicate.explanation}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -1168,23 +1613,27 @@
                             <div className="p-4">
                                 <div className="space-y-3">
                                     {bugs.slice(0, 5).map((bug, index) => (
-                                        <div key={bug.ado_id || index} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div key={bug.ado_id || index} className="flex items-start justify-between p-3 rounded-lg" style={{backgroundColor: '#374151 !important'}}>
                                             <div className="flex-1">
-                                                <div className="font-medium text-gray-900">#{bug.ado_id} - {bug.title}</div>
-                                                <div className="text-sm text-gray-600 mt-1">
-                                                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium mr-2 ${
-                                                        bug.state === 'Active' ? 'bg-yellow-100 text-yellow-800' :
-                                                        bug.state === 'Resolved' ? 'bg-green-100 text-green-800' :
-                                                        bug.state === 'Closed' ? 'bg-gray-100 text-gray-800' :
-                                                        'bg-blue-100 text-blue-800'
-                                                    }`}>
+                                                <div className="font-medium" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>#{bug.ado_id} - {bug.title}</div>
+                                                <div className="text-sm mt-1" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                    <span className="inline-block px-2 py-1 rounded text-xs font-medium mr-2" style={{
+                                                        backgroundColor: bug.state === 'Active' ? '#f59e0b !important' :
+                                                                         bug.state === 'Resolved' ? '#10b981 !important' :
+                                                                         bug.state === 'Closed' ? '#6b7280 !important' :
+                                                                         '#3b82f6 !important',
+                                                        color: '#ffffff !important',
+                                                        fontWeight: '600 !important'
+                                                    }}>
                                                         {bug.state}
                                                     </span>
-                                                    Priority: P{bug.priority || 'N/A'} | 
-                                                    Assigned: {bug.assigned_to || 'Unassigned'}
+                                                    <span style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                        Priority: P{bug.priority || 'N/A'} | 
+                                                        Assigned: {bug.assigned_to || 'Unassigned'}
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div className="text-xs text-gray-500 ml-4">
+                                            <div className="text-xs ml-4" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
                                                 {bug.changed_date ? new Date(bug.changed_date).toLocaleDateString() : 'N/A'}
                                             </div>
                                         </div>
@@ -1547,7 +1996,7 @@
                             <div className="flex items-center mb-4">
                                 <span className="mr-2 text-2xl">🤖</span>
                                 <h3 className="text-lg font-semibold text-gray-900">AI Response</h3>
-                                <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                <span className="ml-2 text-xs px-2 py-1 rounded-full" style={{backgroundColor: '#059669 !important', color: '#ffffff !important', fontWeight: '700 !important'}}>
                                     {response.ai_service || 'AI Assistant'}
                                 </span>
                             </div>
@@ -1680,16 +2129,20 @@
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                             {/* Navigation Tabs */}
                             <div className="bg-white rounded-lg shadow mb-8">
-                                <nav className="flex space-x-8 px-4">
-                                    {tabs.map((tab) => (
+                                <nav className="flex">
+                                    {tabs.map((tab, index) => (
                                         <button
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id)}
-                                            className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                                            className={`flex items-center justify-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-all duration-200 flex-1 ${
                                                 activeTab === tab.id
-                                                    ? 'border-blue-500 text-blue-600'
-                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                                             }`}
+                                            style={{
+                                                borderRadius: index === 0 ? '0.5rem 0 0 0.5rem' : 
+                                                           index === tabs.length - 1 ? '0 0.5rem 0.5rem 0' : '0'
+                                            }}
                                         >
                                             <span>{tab.icon}</span>
                                             <span>{tab.name}</span>
