@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Bug Analyzer - Azure DevOps Integration</title>
+    
+    <!-- React and dependencies -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Enhanced color palette and modern styling */
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --surface-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --card-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            --card-hover-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #e3f2fd;
+            border-top: 3px solid #2196f3;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Enhanced bug cards with dark theme */
+        .bug-card {
+            border: none;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            border-left: 4px solid #4b5563;
+            color: #ffffff !important;
+        }
+        
+        .bug-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--card-hover-shadow);
+        }
+        
+        .bug-card.duplicate {
+            border-left: 4px solid #f59e0b;
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+            color: #ffffff !important;
+        }
+
+        /* Enhanced bug card text styling */
+        .bug-card * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+
+        .bug-card .bug-title {
+            color: #60a5fa !important;
+            font-weight: 700 !important;
+        }
+
+        .bug-card .bug-title:hover {
+            color: #93c5fd !important;
+        }
+
+        .bug-card .text-gray-500, .bug-card .text-gray-600, .bug-card .text-xs {
+            color: #d1d5db !important;
+            font-weight: 600 !important;
+        }
+        
+        .bug-title {
+            color: #1e40af;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .bug-title:hover {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        
+        /* Enhanced priority badges */
+        .priority-1 { 
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); 
+            color: #991b1b; 
+            border: 1px solid #f87171;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+        }
+        .priority-2 { 
+            background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); 
+            color: #9a3412; 
+            border: 1px solid #fb923c;
+            box-shadow: 0 2px 8px rgba(251, 146, 60, 0.2);
+        }
+        .priority-3 { 
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+            color: #92400e; 
+            border: 1px solid #fbbf24;
+            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.2);
+        }
+        .priority-4 { 
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); 
+            color: #065f46; 
+            border: 1px solid #34d399;
+            box-shadow: 0 2px 8px rgba(52, 211, 153, 0.2);
+        }
+        
+        .severity-high { 
+            background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%); 
+            color: #991b1b; 
+            border: 1px solid #f87171;
+        }
+        .severity-medium { 
+            background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); 
+            color: #9a3412; 
+            border: 1px solid #fb923c;
+        }
+        .severity-low { 
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); 
+            color: #065f46; 
+            border: 1px solid #34d399;
+        }
+        
+        .status-closed { 
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); 
+            color: #065f46; 
+            border: 1px solid #34d399;
+        }
+        .status-new { 
+            background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%); 
+            color: #1e40af; 
+            border: 1px solid #60a5fa;
+        }
+        .status-active { 
+            background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); 
+            color: #9a3412; 
+            border: 1px solid #fb923c;
+        }
+        .status-resolved { 
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); 
+            color: #3730a3; 
+            border: 1px solid #a5b4fc;
+        }
+        
+        .duplicate-badge {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .ai-response {
+            white-space: pre-wrap;
+            font-family: inherit;
+        }
+
+        /* Enhanced header styling */
+        header {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+
+        /* Enhanced navigation tabs */
+        .nav-tab {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .nav-tab.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white !important;
+            border-radius: 8px 8px 0 0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Enhanced black cards with gradients for elegant look */
+        .bg-white {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(75, 85, 99, 0.5);
+            transition: all 0.3s ease;
+            color: #ffffff !important;
+        }
+
+        .bg-white:hover {
+            box-shadow: var(--card-hover-shadow);
+        }
+
+        /* Enhanced form elements with black theme */
+        select, input, textarea {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            border: 2px solid #4b5563 !important;
+            color: #ffffff !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            border-color: #8b5cf6 !important;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2) !important;
+            transform: translateY(-1px);
+        }
+
+        /* Enhanced dropdown options with dark theme */
+        select option {
+            background: #1f2937 !important;
+            color: #ffffff !important;
+            font-weight: 500 !important;
+            padding: 8px !important;
+        }
+
+        select option:hover, select option:focus {
+            background: #374151 !important;
+            color: #ffffff !important;
+        }
+
+        select option:checked {
+            background: #3b82f6 !important;
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+
+        /* Enhanced text contrast for dark cards */
+        .bg-white * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+
+        .bg-white h1, .bg-white h2, .bg-white h3, .bg-white h4, .bg-white h5, .bg-white h6 {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+        }
+
+        .bg-white .text-gray-500, .bg-white .text-gray-600, .bg-white .text-gray-700 {
+            color: #d1d5db !important;
+            font-weight: 600 !important;
+        }
+
+        .bg-white .text-sm {
+            color: #e5e7eb !important;
+            font-weight: 500 !important;
+        }
+
+        .bg-white .font-medium, .bg-white .font-semibold {
+            font-weight: 700 !important;
+        }
+
+        /* Apply dark theme to ALL white background elements throughout the application */
+        .bg-white, .bg-gray-50, .bg-blue-50, .bg-green-50, .bg-yellow-50, .bg-red-50, 
+        .bg-amber-50, .bg-purple-50, .bg-indigo-50, .bg-pink-50, .bg-cyan-50, .bg-emerald-50,
+        .bg-orange-50, .bg-lime-50, .bg-teal-50, .bg-slate-50 {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            color: #ffffff !important;
+            border-color: #4b5563 !important;
+        }
+
+        /* Enhanced styling for all card-like elements */
+        div[class*="bg-"], section[class*="bg-"], article[class*="bg-"] {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            color: #ffffff !important;
+        }
+
+        /* Specific fixes for priority and status badges */
+        .priority-1, .priority-2, .priority-3, .priority-4,
+        .severity-high, .severity-medium, .severity-low,
+        .status-closed, .status-new, .status-active, .status-resolved {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            color: #ffffff !important;
+            border: 2px solid #4b5563 !important;
+            font-weight: 600 !important;
+        }
+
+        /* Override any remaining light backgrounds */
+        [class*="bg-white"], [class*="bg-gray-50"], [class*="bg-blue-50"], 
+        [class*="bg-green-50"], [class*="bg-yellow-50"], [class*="bg-red-50"],
+        [class*="bg-amber-50"], [class*="bg-purple-50"], [class*="bg-indigo-50"] {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%) !important;
+            color: #ffffff !important;
+        }
+
+        /* Ensure all text in dark containers is white and bold */
+        [class*="bg-"] *, .bg-white *, div[class*="shadow"] * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+        }
+
+        [class*="bg-"] h1, [class*="bg-"] h2, [class*="bg-"] h3, 
+        [class*="bg-"] h4, [class*="bg-"] h5, [class*="bg-"] h6 {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+        }
+
+        /* Fix for specific text color classes that might override */
+        .text-gray-500, .text-gray-600, .text-gray-700, .text-gray-800, .text-gray-900 {
+            color: #d1d5db !important;
+            font-weight: 600 !important;
+        }
+
+        .text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900 {
+            color: #60a5fa !important;
+            font-weight: 600 !important;
+        }
+
+        /* Enhanced buttons */
+        button {
+            transition: all 0.3s ease !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+        }
+
+        /* Main container styling */
+        .main-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Footer enhancement - always at bottom */
+        footer {
+            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+            margin-top: auto;
+        }
+
+        /* Ensure body and html take full height */
+        html, body {
+            height: 100%;
+        }
+
+        /* Main app container flex layout */
+        #root {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Content area should grow to push footer down */
+        .main-content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Subtle animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeInUp 0.6s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // API base URL
+        const API_BASE_URL = 'http://localhost:8000/api/v1';
+
+        // Utility function for API calls
+        const apiCall = async (endpoint, options = {}) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                throw error;
+            }
+        };
+
+        // Loading component
+        const LoadingSpinner = () => (
+            <div className="flex justify-center items-center p-4">
+                <div className="loading-spinner"></div>
+                <span className="ml-2 text-gray-600">Loading...</span>
+            </div>
+        );
+
+        // Dashboard Tab Component - Enhanced with better date filtering and duplicate highlighting
+        const DashboardTab = ({ selectedProject, selectedArea }) => {
+            const [dashboardData, setDashboardData] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+
+            const loadDashboardData = async () => {
+                if (!selectedProject) return;
+                
+                setLoading(true);
+                setError(null);
+                
+                try {
+                    // Use last 180 days from updated date as discussed
+                    const statsResponse = await apiCall(`/bugs/stats?project_name=${encodeURIComponent(selectedProject)}&area_path=${encodeURIComponent(selectedArea || '')}&days=180&date_field=changed_date`);
+                    setDashboardData(statsResponse);
+                } catch (err) {
+                    setError('Failed to load dashboard data: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                loadDashboardData();
+            }, [selectedProject, selectedArea]);
+
+            const formatDate = (dateStr) => {
+                if (!dateStr) return 'N/A';
+                try {
+                    return new Date(dateStr).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } catch {
+                    return dateStr;
+                }
+            };
+
+            // Check for duplicate bugs based on title similarity
+            const identifyDuplicates = (bugs) => {
+                const duplicates = new Set();
+                for (let i = 0; i < bugs.length; i++) {
+                    for (let j = i + 1; j < bugs.length; j++) {
+                        const similarity = calculateSimilarity(bugs[i].title || '', bugs[j].title || '');
+                        if (similarity > 0.8) {
+                            duplicates.add(bugs[i].ado_id);
+                            duplicates.add(bugs[j].ado_id);
+                        }
+                    }
+                }
+                return duplicates;
+            };
+
+            const calculateSimilarity = (str1, str2) => {
+                const longer = str1.length > str2.length ? str1 : str2;
+                const shorter = str1.length > str2.length ? str2 : str1;
+                if (longer.length === 0) return 1.0;
+                return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
+            };
+
+            const editDistance = (str1, str2) => {
+                const matrix = Array(str2.length + 1).fill().map(() => Array(str1.length + 1).fill(0));
+                for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+                for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+                for (let j = 1; j <= str2.length; j++) {
+                    for (let i = 1; i <= str1.length; i++) {
+                        if (str1[i - 1] === str2[j - 1]) {
+                            matrix[j][i] = matrix[j - 1][i - 1];
+                        } else {
+                            matrix[j][i] = Math.min(
+                                matrix[j - 1][i - 1] + 1,
+                                matrix[j][i - 1] + 1,
+                                matrix[j - 1][i] + 1
+                            );
+                        }
+                    }
+                }
+                return matrix[str2.length][str1.length];
+            };
+
+            if (loading) return <LoadingSpinner />;
+            if (error) return (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <strong>Error:</strong> {error}
+                    <button 
+                        onClick={loadDashboardData}
+                        className="ml-4 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                    >
+                        Retry
+                    </button>
+                </div>
+            );
+
+            if (!dashboardData) {
+                return (
+                    <div className="text-center py-8">
+                        <p className="text-gray-500">Please select a project and area path to view dashboard</p>
+                    </div>
+                );
+            }
+
+            const stats = dashboardData.statistics;
+            const bugs = dashboardData.bugs || [];
+            const duplicateBugs = identifyDuplicates(bugs);
+
+            return (
+                <div className="space-y-6">
+                    {/* Enhanced Dashboard Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="bg-white p-4 rounded-lg border border-gray-200">
+                            <h3 className="text-sm font-medium text-gray-700 mb-2">Total Bugs (Last 180 Days)</h3>
+                            <div className="text-3xl font-bold text-blue-600 mb-1">{stats.total_bugs}</div>
+                            <div className="text-xs text-gray-500">Based on last updated date</div>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-lg border border-gray-200">
+                            <h3 className="text-sm font-medium text-gray-700 mb-2">By State</h3>
+                            <div className="space-y-1">
+                                {Object.entries(stats.state_distribution).slice(0,3).map(([state, count]) => (
+                                    <div key={state} className="flex justify-between text-sm">
+                                        <span className={`status-${state.toLowerCase()} px-2 py-1 rounded text-xs`}>
+                                            {state}:
+                                        </span>
+                                        <span className="font-semibold">{count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-lg border border-gray-200">
+                            <h3 className="text-sm font-medium text-gray-700 mb-2">By Priority</h3>
+                            <div className="space-y-1">
+                                {Object.entries(stats.priority_distribution).slice(0,3).map(([priority, count]) => (
+                                    <div key={priority} className="flex justify-between text-sm">
+                                        <span className={`priority-${priority} px-2 py-1 rounded text-xs`}>
+                                            P{priority}:
+                                        </span>
+                                        <span className="font-semibold">{count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-lg border border-gray-200">
+                            <h3 className="text-sm font-medium text-gray-700 mb-2">Potential Duplicates</h3>
+                            <div className="text-3xl font-bold text-amber-600 mb-1">{duplicateBugs.size}</div>
+                            <div className="text-xs text-gray-500">Detected by title similarity</div>
+                        </div>
+                    </div>
+
+                    {/* Enhanced Bugs List with Duplicate Highlighting */}
+                    <div className="bg-white rounded-lg border border-gray-200">
+                        <div className="p-4 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                Recent Bugs - {stats.total_bugs} Total 
+                                {duplicateBugs.size > 0 && (
+                                    <span className="ml-2 text-sm text-amber-600">
+                                        ({duplicateBugs.size} potential duplicates)
+                                    </span>
+                                )}
+                            </h3>
+                        </div>
+                        <div className="p-4">
+                            {bugs.length > 0 ? (
+                                <div className="space-y-4">
+                                    {bugs.slice(0, 10).map((bug, index) => {
+                                        const isDuplicate = duplicateBugs.has(bug.ado_id);
+                                        return (
+                                            <div key={bug.ado_id || index} className={`bug-card ${isDuplicate ? 'duplicate' : ''}`}>
+                                                <div className="mb-3">
+                                                    <div className="flex items-start justify-between">
+                                                        <a href="#" className="bug-title text-lg">
+                                                            #{bug.ado_id} {bug.title}
+                                                        </a>
+                                                        {isDuplicate && (
+                                                            <span className="duplicate-badge">POTENTIAL DUPLICATE</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap gap-4 text-sm mb-2">
+                                                    <span className={`px-2 py-1 rounded font-medium priority-${bug.priority || '4'}`}>
+                                                        Priority: {bug.priority || 'N/A'}
+                                                    </span>
+                                                    <span className={`px-2 py-1 rounded font-medium severity-${bug.severity?.toLowerCase() || 'low'}`}>
+                                                        Severity: {bug.severity || 'N/A'}
+                                                    </span>
+                                                    <span className={`px-2 py-1 rounded text-xs font-medium status-${bug.state?.toLowerCase() || 'unknown'}`}>
+                                                        {bug.state || 'Unknown'}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    Assigned: {bug.assigned_to || 'Unassigned'} | 
+                                                    Last Updated: {formatDate(bug.changed_date)} | 
+                                                    Created: {formatDate(bug.created_date)}
+                                                </div>
+                                                {isDuplicate && (
+                                                    <div className="mt-2 text-sm text-amber-700 bg-amber-50 p-2 rounded">
+                                                        <strong>⚠️ Duplicate Alert:</strong> This bug appears similar to other bugs in the list. Consider reviewing for potential consolidation.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 text-center py-4">No bugs found for the last 180 days</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Duplicate Detection Tab
+        const DuplicateDetectionTab = ({ selectedProject, selectedArea }) => {
+            const [query, setQuery] = useState('');
+            const [duplicates, setDuplicates] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [threshold, setThreshold] = useState(0.75);
+
+            const searchDuplicates = async () => {
+                if (!query.trim() || !selectedProject) return;
+                
+                setLoading(true);
+                setError(null);
+                
+                try {
+                    const searchPayload = {
+                        query_text: query,
+                        project_name: selectedProject,
+                        area_path: selectedArea,
+                        similarity_threshold: threshold
+                    };
+                    
+                    const response = await apiCall('/duplicates/find-duplicates', {
+                        method: 'POST',
+                        body: JSON.stringify(searchPayload)
+                    });
+                    
+                    setDuplicates(response.duplicates || []);
+                } catch (err) {
+                    setError('Failed to search for duplicates: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-4">🔍 Find Duplicate Bugs</h3>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Bug Description or Query
+                                </label>
+                                <textarea
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    rows="3"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter a bug description to find similar existing bugs..."
+                                />
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Similarity Threshold
+                                    </label>
+                                    <select
+                                        value={threshold}
+                                        onChange={(e) => setThreshold(parseFloat(e.target.value))}
+                                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value={0.76}>76-100% - High Precision</option>
+                                        <option value={0.51}>51-75% - Medium Precision</option>
+                                        <option value={0.26}>26-50% - Low Precision</option>
+                                        <option value={0.01}>0-25% - Very Low Precision</option>
+                                    </select>
+                                </div>
+                                
+                                <button
+                                    onClick={searchDuplicates}
+                                    disabled={!query.trim() || !selectedProject || loading}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? 'Searching...' : 'Find Duplicates'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                            {error}
+                        </div>
+                    )}
+
+                    {loading && <LoadingSpinner />}
+
+                    {duplicates.length > 0 && (
+                        <div className="bg-white rounded-lg shadow">
+                            <div className="p-4 border-b border-gray-200">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Found {duplicates.length} Potential Duplicates
+                                </h3>
+                            </div>
+                            <div className="p-4 space-y-4">
+                                {duplicates.map((duplicate, index) => (
+                                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h4 className="text-lg font-medium text-blue-600">
+                                                #{duplicate.bug_id} - {duplicate.title}
+                                            </h4>
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                                {Math.round(duplicate.similarity * 100)}% Match
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-600 mb-3">{duplicate.description}</p>
+                                        <div className="text-sm text-gray-500">
+                                            <span className="font-medium">Reasoning:</span> {duplicate.explanation}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Root Cause Analysis Tab
+        const RootCauseAnalysisTab = ({ selectedProject, selectedArea }) => {
+            const [analysis, setAnalysis] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [analysisDepth, setAnalysisDepth] = useState('standard');
+
+            const loadRootCauseAnalysis = async () => {
+                if (!selectedProject) return;
+                
+                setLoading(true);
+                setError(null);
+                
+                try {
+                    const analysisPayload = {
+                        project_name: selectedProject,
+                        area_path: selectedArea,
+                        analysis_depth: analysisDepth
+                    };
+                    
+                    const response = await apiCall('/analytics/root-cause-analysis', {
+                        method: 'POST',
+                        body: JSON.stringify(analysisPayload)
+                    });
+                    
+                    if (response.success) {
+                        setAnalysis(response.analysis);
+                    }
+                } catch (err) {
+                    setError('Failed to load root cause analysis: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                loadRootCauseAnalysis();
+            }, [selectedProject, selectedArea, analysisDepth]);
+
+            if (!selectedProject) {
+                return (
+                    <div className="text-center py-8">
+                        <p className="text-gray-500">Please select a project to view root cause analysis</p>
+                    </div>
+                );
+            }
+
+            if (loading) return <LoadingSpinner />;
+            if (error) return (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <span>{error}</span>
+                </div>
+            );
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="flex items-center gap-4">
+                            <label className="text-sm font-medium text-gray-700">Analysis Depth:</label>
+                            <select
+                                value={analysisDepth}
+                                onChange={(e) => setAnalysisDepth(e.target.value)}
+                                className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="standard">Standard</option>
+                                <option value="detailed">Detailed</option>
+                                <option value="comprehensive">Comprehensive</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {analysis && (
+                        <div className="space-y-6">
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <h3 className="text-lg font-semibold text-blue-900 mb-2">🔬 Analysis Summary</h3>
+                                <p className="text-blue-800">
+                                    Analyzed {analysis.total_bugs_analyzed} bugs with {analysis.recommendations?.length || 0} recommendations
+                                </p>
+                            </div>
+
+                            {analysis.recommendations && analysis.recommendations.length > 0 && (
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <h3 className="text-xl font-semibold text-gray-900 mb-4">AI Recommendations</h3>
+                                    <div className="space-y-3">
+                                        {analysis.recommendations.map((rec, index) => (
+                                            <div key={index} className="bg-blue-50 p-4 rounded-lg">
+                                                <h4 className="font-semibold text-blue-900 mb-2">{rec.category}</h4>
+                                                <p className="text-sm text-blue-800 mb-2">
+                                                    <strong>Focus:</strong> {rec.focus}
+                                                </p>
+                                                <p className="text-sm text-blue-800">
+                                                    <strong>Action:</strong> {rec.action}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {analysis.categories && (
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Bug Categories</h3>
+                                    <div className="space-y-3">
+                                        {Object.entries(analysis.categories).map(([category, bugs]) => {
+                                            if (!bugs || bugs.length === 0) return null;
+                                            return (
+                                                <div key={category} className="bg-gray-50 p-3 rounded">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-medium">{category}</span>
+                                                        <span className="text-sm text-gray-600">{bugs.length} bugs</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Analytics Tab with Real Charts and Data
+        const AnalyticsTab = ({ selectedProject, selectedArea }) => {
+            const [analyticsData, setAnalyticsData] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [timeRange, setTimeRange] = useState('last_30_days');
+
+            const loadAnalyticsData = async () => {
+                if (!selectedProject) return;
+                
+                setLoading(true);
+                setError(null);
+                
+                try {
+                    // Load comprehensive analytics data
+                    const [statsResponse, trendsResponse] = await Promise.all([
+                        apiCall(`/bugs/stats?project_name=${encodeURIComponent(selectedProject)}&area_path=${encodeURIComponent(selectedArea || '')}&days=180&date_field=changed_date`),
+                        apiCall(`/analytics/trend-analysis?project_name=${encodeURIComponent(selectedProject)}&area_path=${encodeURIComponent(selectedArea || '')}&days_back=30&interval=daily`)
+                    ]);
+                    
+                    setAnalyticsData({
+                        stats: statsResponse,
+                        trends: trendsResponse
+                    });
+                } catch (err) {
+                    setError('Failed to load analytics data: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                loadAnalyticsData();
+            }, [selectedProject, selectedArea, timeRange]);
+
+            const createPieChart = (canvasId, data, label) => {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (!data || Object.keys(data).length === 0) {
+                    ctx.fillStyle = '#9CA3AF';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+                
+                const total = Object.values(data).reduce((sum, val) => sum + val, 0);
+                let currentAngle = 0;
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(centerX, centerY) - 10;
+                
+                Object.entries(data).forEach(([key, value], index) => {
+                    const sliceAngle = (value / total) * 2 * Math.PI;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                    ctx.closePath();
+                    ctx.fillStyle = colors[index % colors.length];
+                    ctx.fill();
+                    
+                    // Add label
+                    const labelAngle = currentAngle + sliceAngle / 2;
+                    const labelX = centerX + Math.cos(labelAngle) * (radius / 2);
+                    const labelY = centerY + Math.sin(labelAngle) * (radius / 2);
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(value.toString(), labelX, labelY);
+                    
+                    currentAngle += sliceAngle;
+                });
+            };
+
+            const createBarChart = (canvasId, data, label) => {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (!data || Object.keys(data).length === 0) {
+                    ctx.fillStyle = '#9CA3AF';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+                
+                const entries = Object.entries(data);
+                const maxValue = Math.max(...Object.values(data));
+                const barWidth = (canvas.width - 40) / entries.length;
+                const chartHeight = canvas.height - 60;
+                
+                entries.forEach(([key, value], index) => {
+                    const barHeight = (value / maxValue) * chartHeight;
+                    const x = 20 + index * barWidth;
+                    const y = canvas.height - 40 - barHeight;
+                    
+                    ctx.fillStyle = '#3B82F6';
+                    ctx.fillRect(x, y, barWidth - 10, barHeight);
+                    
+                    // Add value label on top
+                    ctx.fillStyle = '#374151';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(value.toString(), x + (barWidth - 10) / 2, y - 5);
+                    
+                    // Add key label at bottom
+                    ctx.fillText(key, x + (barWidth - 10) / 2, canvas.height - 10);
+                });
+            };
+
+            useEffect(() => {
+                if (analyticsData && analyticsData.stats) {
+                    // Create charts after data is loaded
+                    setTimeout(() => {
+                        createPieChart('stateChart', analyticsData.stats.statistics.state_distribution, 'Bug States');
+                        createPieChart('priorityChart', analyticsData.stats.statistics.priority_distribution, 'Bug Priorities');
+                        createBarChart('severityChart', analyticsData.stats.statistics.severity_distribution || {}, 'Bug Severity');
+                    }, 100);
+                }
+            }, [analyticsData]);
+
+            if (!selectedProject) {
+                return (
+                    <div className="text-center py-8">
+                        <p className="text-gray-500">Please select a project to view analytics</p>
+                    </div>
+                );
+            }
+
+            if (loading) return <LoadingSpinner />;
+            if (error) return (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <span>{error}</span>
+                </div>
+            );
+
+            const stats = analyticsData?.stats?.statistics;
+            const bugs = analyticsData?.stats?.bugs || [];
+
+            return (
+                <div className="space-y-6">
+                    {/* Time Range Selector */}
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="flex items-center gap-4">
+                            <label className="text-sm font-medium text-gray-700">Time Range:</label>
+                            <select
+                                value={timeRange}
+                                onChange={(e) => setTimeRange(e.target.value)}
+                                className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="last_7_days">Last 7 Days</option>
+                                <option value="last_30_days">Last 30 Days</option>
+                                <option value="last_90_days">Last 90 Days</option>
+                                <option value="last_180_days">Last 180 Days</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Key Metrics Cards */}
+                    {stats && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-lg text-white">
+                                <h3 className="text-sm font-medium mb-2">Total Bugs</h3>
+                                <div className="text-3xl font-bold">{stats.total_bugs}</div>
+                                <div className="text-xs opacity-80">Last 180 days</div>
+                            </div>
+                            
+                            <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-lg text-white">
+                                <h3 className="text-sm font-medium mb-2">Resolved</h3>
+                                <div className="text-3xl font-bold">{stats.state_distribution.Resolved || 0}</div>
+                                <div className="text-xs opacity-80">
+                                    {stats.total_bugs > 0 ? Math.round(((stats.state_distribution.Resolved || 0) / stats.total_bugs) * 100) : 0}% of total
+                                </div>
+                            </div>
+                            
+                            <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-6 rounded-lg text-white">
+                                <h3 className="text-sm font-medium mb-2">High Priority</h3>
+                                <div className="text-3xl font-bold">{(stats.priority_distribution['1'] || 0) + (stats.priority_distribution['2'] || 0)}</div>
+                                <div className="text-xs opacity-80">P1 + P2 issues</div>
+                            </div>
+                            
+                            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-lg text-white">
+                                <h3 className="text-sm font-medium mb-2">Active</h3>
+                                <div className="text-3xl font-bold">{stats.state_distribution.Active || 0}</div>
+                                <div className="text-xs opacity-80">In progress</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Charts Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {/* Bug State Distribution Chart */}
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Bug State Distribution</h3>
+                            <canvas id="stateChart" width="250" height="200" className="mx-auto"></canvas>
+                            {stats && (
+                                <div className="mt-4 space-y-2">
+                                    {Object.entries(stats.state_distribution).map(([state, count], index) => (
+                                        <div key={state} className="flex justify-between text-sm">
+                                            <span className="flex items-center">
+                                                <div className={`w-3 h-3 rounded mr-2 ${
+                                                    index === 0 ? 'bg-blue-500' : 
+                                                    index === 1 ? 'bg-green-500' : 
+                                                    index === 2 ? 'bg-yellow-500' : 
+                                                    index === 3 ? 'bg-red-500' : 'bg-purple-500'
+                                                }`}></div>
+                                                {state}
+                                            </span>
+                                            <span className="font-semibold">{count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Bug Priority Distribution Chart */}
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Priority Distribution</h3>
+                            <canvas id="priorityChart" width="250" height="200" className="mx-auto"></canvas>
+                            {stats && (
+                                <div className="mt-4 space-y-2">
+                                    {Object.entries(stats.priority_distribution).map(([priority, count], index) => (
+                                        <div key={priority} className="flex justify-between text-sm">
+                                            <span className="flex items-center">
+                                                <div className={`w-3 h-3 rounded mr-2 ${
+                                                    index === 0 ? 'bg-blue-500' : 
+                                                    index === 1 ? 'bg-green-500' : 
+                                                    index === 2 ? 'bg-yellow-500' : 'bg-red-500'
+                                                }`}></div>
+                                                P{priority}
+                                            </span>
+                                            <span className="font-semibold">{count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Bug Severity Distribution Chart */}
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Severity Analysis</h3>
+                            <canvas id="severityChart" width="250" height="200" className="mx-auto"></canvas>
+                            <div className="mt-4 text-center">
+                                <div className="text-sm text-gray-600">Distribution by severity level</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Recent Bug Activity */}
+                    {bugs && bugs.length > 0 && (
+                        <div className="bg-white rounded-lg shadow">
+                            <div className="p-4 border-b border-gray-200">
+                                <h3 className="text-lg font-semibold text-gray-900">Recent Bug Activity</h3>
+                                <p className="text-sm text-gray-600">Latest {Math.min(bugs.length, 5)} bugs by last updated date</p>
+                            </div>
+                            <div className="p-4">
+                                <div className="space-y-3">
+                                    {bugs.slice(0, 5).map((bug, index) => (
+                                        <div key={bug.ado_id || index} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+                                            <div className="flex-1">
+                                                <div className="font-medium text-gray-900">#{bug.ado_id} - {bug.title}</div>
+                                                <div className="text-sm text-gray-600 mt-1">
+                                                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium mr-2 ${
+                                                        bug.state === 'Active' ? 'bg-yellow-100 text-yellow-800' :
+                                                        bug.state === 'Resolved' ? 'bg-green-100 text-green-800' :
+                                                        bug.state === 'Closed' ? 'bg-gray-100 text-gray-800' :
+                                                        'bg-blue-100 text-blue-800'
+                                                    }`}>
+                                                        {bug.state}
+                                                    </span>
+                                                    Priority: P{bug.priority || 'N/A'} | 
+                                                    Assigned: {bug.assigned_to || 'Unassigned'}
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-gray-500 ml-4">
+                                                {bug.changed_date ? new Date(bug.changed_date).toLocaleDateString() : 'N/A'}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Performance Metrics */}
+                    {stats && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Quality Metrics</h3>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between">
+                                        <span>Resolution Rate</span>
+                                        <span className="font-semibold text-green-600">
+                                            {stats.total_bugs > 0 ? Math.round(((stats.state_distribution.Resolved || 0) + (stats.state_distribution.Closed || 0)) / stats.total_bugs * 100) : 0}%
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>High Priority Issues</span>
+                                        <span className="font-semibold text-red-600">
+                                            {(stats.priority_distribution['1'] || 0) + (stats.priority_distribution['2'] || 0)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Active Bugs</span>
+                                        <span className="font-semibold text-amber-600">
+                                            {stats.state_distribution.Active || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">📈 Project Health</h3>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between">
+                                        <span>New Bugs</span>
+                                        <span className="font-semibold text-blue-600">
+                                            {stats.state_distribution.New || 0}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Total Priority 1&2</span>
+                                        <span className="font-semibold text-red-600">
+                                            {(stats.priority_distribution['1'] || 0) + (stats.priority_distribution['2'] || 0)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Bug Trend</span>
+                                        <span className="font-semibold text-green-600">Stable</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Trend Analysis */}
+                    {stats && (
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Summary & Insights</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                    <div className="text-2xl font-bold text-blue-600">{stats.total_bugs}</div>
+                                    <div className="text-sm text-blue-700">Total Issues</div>
+                                </div>
+                                <div className="text-center p-4 bg-green-50 rounded-lg">
+                                    <div className="text-2xl font-bold text-green-600">
+                                        {stats.total_bugs > 0 ? Math.round(((stats.state_distribution.Resolved || 0) + (stats.state_distribution.Closed || 0)) / stats.total_bugs * 100) : 0}%
+                                    </div>
+                                    <div className="text-sm text-green-700">Resolution Rate</div>
+                                </div>
+                                <div className="text-center p-4 bg-amber-50 rounded-lg">
+                                    <div className="text-2xl font-bold text-amber-600">
+                                        {(stats.priority_distribution['1'] || 0) + (stats.priority_distribution['2'] || 0)}
+                                    </div>
+                                    <div className="text-sm text-amber-700">High Priority</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Enhanced Help & Guidance Tab with comprehensive sections
+        const HelpTab = () => {
+            const [activeHelpTab, setActiveHelpTab] = useState('bug-lifecycle');
+
+            const helpTabs = [
+                { id: 'bug-lifecycle', name: 'Bug Lifecycle', icon: '🔄' },
+                { id: 'best-practices', name: 'Best Practices', icon: '⭐' },
+                { id: 'troubleshooting', name: 'Troubleshooting', icon: '🔧' },
+                { id: 'ai-assistant', name: 'AI Assistant', icon: '🤖' }
+            ];
+
+            const renderHelpContent = () => {
+                switch (activeHelpTab) {
+                    case 'bug-lifecycle':
+                        return (
+                            <div className="space-y-4">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-4">Azure DevOps Bug Lifecycle</h3>
+                                
+                                <div className="bg-blue-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-blue-900 mb-2">🆕 New</h4>
+                                    <p className="text-sm text-blue-800">
+                                        Bug discovered and reported but not yet reviewed by the team. Awaiting triage.
+                                    </p>
+                                </div>
+                                
+                                <div className="bg-yellow-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-yellow-900 mb-2">⚡ Active</h4>
+                                    <p className="text-sm text-yellow-800">
+                                        Bug accepted, assigned, and being worked on. Development in progress.
+                                    </p>
+                                </div>
+                                
+                                <div className="bg-purple-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-purple-900 mb-2">✅ Resolved</h4>
+                                    <p className="text-sm text-purple-800">
+                                        Fix implemented and ready for verification. Awaiting testing.
+                                    </p>
+                                </div>
+                                
+                                <div className="bg-green-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-green-900 mb-2">🎯 Closed</h4>
+                                    <p className="text-sm text-green-800">
+                                        Fix verified and confirmed working. Issue officially resolved.
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    
+                    case 'best-practices':
+                        return (
+                            <div className="space-y-4">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-4">Bug Management Best Practices</h3>
+                                
+                                <div className="bg-emerald-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-emerald-900 mb-2">📝 Writing Good Bug Reports</h4>
+                                    <ul className="text-sm text-emerald-800 space-y-1">
+                                        <li>• Use clear, descriptive titles</li>
+                                        <li>• Include step-by-step reproduction instructions</li>
+                                        <li>• Specify expected vs actual behavior</li>
+                                        <li>• Add screenshots and environment details</li>
+                                    </ul>
+                                </div>
+                                
+                                <div className="bg-amber-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-amber-900 mb-2">🎯 Prioritization Guidelines</h4>
+                                    <ul className="text-sm text-amber-800 space-y-1">
+                                        <li>• Priority 1: System down, critical business impact</li>
+                                        <li>• Priority 2: Major functionality broken</li>
+                                        <li>• Priority 3: Important features affected</li>
+                                        <li>• Priority 4: Minor issues, cosmetic problems</li>
+                                    </ul>
+                                </div>
+                                
+                                <div className="bg-cyan-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-cyan-900 mb-2">🔍 Duplicate Prevention</h4>
+                                    <ul className="text-sm text-cyan-800 space-y-1">
+                                        <li>• Search existing bugs before creating new ones</li>
+                                        <li>• Use our AI-powered duplicate detection</li>
+                                        <li>• Check similar symptoms and error messages</li>
+                                        <li>• Link related bugs appropriately</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        );
+                    
+                    case 'troubleshooting':
+                        return (
+                            <div className="space-y-4">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-4">Common Issues & Solutions</h3>
+                                
+                                <div className="bg-red-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-red-900 mb-2">🚨 "Failed to load dashboard data"</h4>
+                                    <p className="text-sm text-red-800 mb-2">
+                                        Usually indicates connectivity issues with Azure DevOps API.
+                                    </p>
+                                    <ul className="text-sm text-red-800 space-y-1">
+                                        <li>• Check your internet connection</li>
+                                        <li>• Verify project and area path selections</li>
+                                        <li>• Try refreshing the page</li>
+                                        <li>• Contact admin if issues persist</li>
+                                    </ul>
+                                </div>
+                                
+                                <div className="bg-orange-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-orange-900 mb-2">⚠️ No bugs found</h4>
+                                    <p className="text-sm text-orange-800 mb-2">
+                                        Check date range and filter settings.
+                                    </p>
+                                    <ul className="text-sm text-orange-800 space-y-1">
+                                        <li>• Default shows last 180 days from last updated date</li>
+                                        <li>• Try different project/area combinations</li>
+                                        <li>• Verify your ADO permissions</li>
+                                    </ul>
+                                </div>
+                                
+                                <div className="bg-indigo-50 p-4 rounded-lg">
+                                    <h4 className="font-semibold text-indigo-900 mb-2">🔄 Duplicate detection not working</h4>
+                                    <p className="text-sm text-indigo-800 mb-2">
+                                        AI-powered duplicate detection requires specific conditions.
+                                    </p>
+                                    <ul className="text-sm text-indigo-800 space-y-1">
+                                        <li>• Ensure your query is descriptive</li>
+                                        <li>• Try adjusting similarity threshold</li>
+                                        <li>• Check project/area selections</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        );
+                    
+                    case 'ai-assistant':
+                        return <AIAssistantTab selectedProject="" selectedArea="" />;
+                    
+                    default:
+                        return <div>Help content</div>;
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white rounded-lg shadow">
+                        <div className="border-b border-gray-200">
+                            <nav className="flex space-x-8 px-4">
+                                {helpTabs.map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveHelpTab(tab.id)}
+                                        className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                                            activeHelpTab === tab.id
+                                                ? 'border-blue-500 text-blue-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <span>{tab.icon}</span>
+                                        <span>{tab.name}</span>
+                                    </button>
+                                ))}
+                            </nav>
+                        </div>
+                        <div className="p-6">
+                            {renderHelpContent()}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // AI Assistant Tab - Comprehensive software development expert
+        const AIAssistantTab = ({ selectedProject, selectedArea }) => {
+            const [query, setQuery] = useState('');
+            const [response, setResponse] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+
+            const askAI = async () => {
+                if (!query.trim()) return;
+                
+                setLoading(true);
+                setError(null);
+                
+                try {
+                    const aiRequest = {
+                        query: query,
+                        context: 'help_question',
+                        project_name: selectedProject,
+                        area_path: selectedArea
+                    };
+                    
+                    const result = await apiCall('/internal-ai/analyze', {
+                        method: 'POST',
+                        body: JSON.stringify(aiRequest)
+                    });
+                    
+                    if (result.success) {
+                        setResponse(result);
+                    }
+                } catch (err) {
+                    setError('Failed to get AI response: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const exampleQuestions = [
+                "How do I triage high-priority bugs effectively?",
+                "What are the best practices for bug reproduction?",
+                "How can I identify patterns in recurring bugs?",
+                "What information should I include in bug reports?",
+                "How do I debug memory leaks in a Node.js application?",
+                "What are the best practices for API testing?",
+                "How can I set up effective CI/CD pipelines?"
+            ];
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-4">🤖 AI Assistant - Ask Questions About Your Bugs</h3>
+                        <p className="text-gray-600 mb-4">
+                            Get contextual help and answers about Azure DevOps bugs, processes, software development, and best practices.
+                        </p>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Your Question
+                                </label>
+                                <textarea
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    rows="4"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Ask anything about bug management, Azure DevOps, or your current project..."
+                                />
+                            </div>
+                            
+                            <button
+                                onClick={askAI}
+                                disabled={!query.trim() || loading}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center"
+                            >
+                                <span className="mr-2">🤖</span>
+                                {loading ? 'Asking AI Assistant...' : 'Ask AI Assistant'}
+                            </button>
+                        </div>
+
+                        {/* Example Questions */}
+                        <div className="mt-6">
+                            <h4 className="text-sm font-medium text-gray-700 mb-3">Example Questions:</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {exampleQuestions.map((question, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setQuery(question)}
+                                        className="text-left text-sm text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 border border-gray-200 hover:border-blue-300"
+                                    >
+                                        {question}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                            <strong>Error:</strong> {error}
+                        </div>
+                    )}
+
+                    {loading && <LoadingSpinner />}
+
+                    {response && (
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <div className="flex items-center mb-4">
+                                <span className="mr-2 text-2xl">🤖</span>
+                                <h3 className="text-lg font-semibold text-gray-900">AI Response</h3>
+                                <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                                    {response.ai_service || 'AI Assistant'}
+                                </span>
+                            </div>
+                            
+                            <div className="ai-response text-gray-700 leading-relaxed">
+                                {response.analysis}
+                            </div>
+
+                            {response.insights && response.insights.length > 0 && (
+                                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                                    <h4 className="font-medium text-blue-900 mb-2">💡 Additional Insights:</h4>
+                                    <ul className="text-sm text-blue-800 space-y-1">
+                                        {response.insights.map((insight, index) => (
+                                            <li key={index}>• {insight}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [projects, setProjects] = useState([]);
+            const [selectedProject, setSelectedProject] = useState('');
+            const [selectedArea, setSelectedArea] = useState('');
+            const [areas, setAreas] = useState([]);
+            const [projectsLoading, setProjectsLoading] = useState(true);
+
+            const tabs = [
+                { id: 'dashboard', name: 'Dashboard', icon: '📊' },
+                { id: 'duplicates', name: 'Duplicate Detection', icon: '🔍' },
+                { id: 'root-cause', name: 'Root Cause Analysis', icon: '🔬' },
+                { id: 'analytics', name: 'Analytics', icon: '📈' },
+                { id: 'help', name: 'Help & Guidance', icon: '❓' }
+            ];
+
+            // Load projects on component mount
+            useEffect(() => {
+                const loadProjects = async () => {
+                    try {
+                        console.log('Loading projects from API...');
+                        const response = await apiCall('/projects');
+                        console.log('Projects response received:', response);
+                        console.log('Response type:', typeof response);
+                        console.log('Response keys:', response ? Object.keys(response) : 'null');
+                        
+                        if (response && response.projects && Array.isArray(response.projects)) {
+                            console.log(`Setting ${response.projects.length} projects`);
+                            setProjects(response.projects);
+                        } else {
+                            console.error('Invalid response format:', response);
+                        }
+                    } catch (error) {
+                        console.error('Failed to load projects:', error);
+                    } finally {
+                        setProjectsLoading(false);
+                    }
+                };
+
+                loadProjects();
+            }, []);
+
+            // Load areas when project changes
+            useEffect(() => {
+                const loadAreas = async () => {
+                    if (!selectedProject) {
+                        setAreas([]);
+                        return;
+                    }
+
+                    try {
+                        const response = await apiCall(`/projects/${encodeURIComponent(selectedProject)}/areas`);
+                        if (response && response.area_paths) {
+                            setAreas(response.area_paths);
+                        }
+                    } catch (error) {
+                        console.error('Failed to load areas:', error);
+                        setAreas([]);
+                    }
+                };
+
+                loadAreas();
+            }, [selectedProject]);
+
+            const renderTabContent = () => {
+                switch (activeTab) {
+                    case 'dashboard':
+                        return <DashboardTab selectedProject={selectedProject} selectedArea={selectedArea} />;
+                    case 'duplicates':
+                        return <DuplicateDetectionTab selectedProject={selectedProject} selectedArea={selectedArea} />;
+                    case 'root-cause':
+                        return <RootCauseAnalysisTab selectedProject={selectedProject} selectedArea={selectedArea} />;
+                    case 'analytics':
+                        return <AnalyticsTab selectedProject={selectedProject} selectedArea={selectedArea} />;
+                    case 'help':
+                        return <HelpTab />;
+                    default:
+                        return <DashboardTab selectedProject={selectedProject} selectedArea={selectedArea} />;
+                }
+            };
+
+            return (
+                <>
+                    {/* Header */}
+                    <header className="bg-white shadow-sm border-b border-gray-200">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex items-center justify-between h-16">
+                                <div className="flex items-center">
+                                    <span className="text-2xl mr-3">🤖</span>
+                                    <div>
+                                        <h1 className="text-xl font-semibold text-gray-900">AI Bug Analyzer</h1>
+                                        <p className="text-sm text-gray-500">Azure DevOps Integration</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">v1.0.0</span>
+                                    <span>Live MCP Integration</span>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main content wrapper for sticky footer */}
+                    <div className="main-content-wrapper">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                            {/* Navigation Tabs */}
+                            <div className="bg-white rounded-lg shadow mb-8">
+                                <nav className="flex space-x-8 px-4">
+                                    {tabs.map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                                                activeTab === tab.id
+                                                    ? 'border-blue-500 text-blue-600'
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <span>{tab.icon}</span>
+                                            <span>{tab.name}</span>
+                                        </button>
+                                    ))}
+                                </nav>
+                            </div>
+
+                            {/* Project and Area Selection */}
+                            <div className="bg-white p-6 rounded-lg shadow mb-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Azure DevOps Project <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={selectedProject}
+                                            onChange={(e) => {
+                                                setSelectedProject(e.target.value);
+                                                setSelectedArea(''); // Reset area when project changes
+                                            }}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={projectsLoading}
+                                        >
+                                            <option value="">
+                                                {projectsLoading ? 'Loading projects...' : 'Select a project...'}
+                                            </option>
+                                            {projects.map((project) => (
+                                                <option key={project} value={project}>
+                                                    {project}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Area Path <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={selectedArea}
+                                            onChange={(e) => setSelectedArea(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            disabled={!selectedProject}
+                                        >
+                                            <option value="">Select an area...</option>
+                                            {areas.map((area) => (
+                                                <option key={area} value={area}>
+                                                    {area}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {!selectedProject && (
+                                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                                        <p className="text-sm text-blue-700">
+                                            📋 Please select a project and area path to view dashboard
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Tab Content */}
+                            <div>
+                                {renderTabContent()}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <footer className="bg-white border-t border-gray-200">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                            <div className="flex items-center justify-between text-sm text-gray-500">
+                                <span>AI Bug Analyzer - Powered by Azure OpenAI & MCP Integration</span>
+                                <div className="flex items-center space-x-6">
+                                    <span>FastAPI Backend</span>
+                                    <span>•</span>
+                                    <span>React Frontend</span>
+                                    <span>•</span>
+                                    <span>Live ADO Data</span>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                </>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Bug Analyzer - Azure DevOps Integration</title>
+    
+    <!-- React and dependencies -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // API base URL
+        const API_BASE_URL = 'http://localhost:8000/api/v1';
+
+        // Utility function for API calls
+        const apiCall = async (endpoint, options = {}) => {
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                throw error;
+            }
+        };
+
+        // Loading component
+        const LoadingSpinner = () => (
+            <div className="flex justify-center items-center p-4">
+                <div className="loading-spinner"></div>
+                <span className="ml-2 text-gray-600">Loading...</span>
+            </div>
+        );
+
+        // Root Cause Analysis Tab
+        const RootCauseAnalysisTab = ({ selectedProject, selectedArea }) => {
+            const [analysis, setAnalysis] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [analysisDepth, setAnalysisDepth] = useState('standard');
+
+            const loadRootCauseAnalysis = async () => {
+                if (!selectedProject) return;
+                
+                setLoading(true);
+                setError(null);
+                
+                try {
+                    const analysisPayload = {
+                        project_name: selectedProject,
+                        area_path: selectedArea,
+                        analysis_depth: analysisDepth
+                    };
+                    
+                    const analysisResponse = await apiCall('/analytics/root-cause-analysis', {
+                        method: 'POST',
+                        body: JSON.stringify(analysisPayload)
+                    });
+                    
+                    if (analysisResponse.success) {
+                        setAnalysis(analysisResponse.analysis);
+                    }
+                } catch (err) {
+                    setError('Failed to load root cause analysis: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                loadRootCauseAnalysis();
+            }, [selectedProject, selectedArea, analysisDepth]);
+
+            if (!selectedProject || !selectedArea) {
+                return (
+                    <div className="text-center py-8">
+                        <p className="text-gray-500">Please select a project and area path to view root cause analysis</p>
+                    </div>
+                );
+            }
+
+            if (loading) return <LoadingSpinner />;
+            if (error) return (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <span>{error}</span>
+                </div>
+            );
+
+            return (
+                <div className="space-y-6">
+                    {/* Analysis Controls */}
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <div className="flex items-center gap-4">
+                            <label className="text-sm font-medium text-gray-700">Analysis Depth:</label>
+                            <select
+                                value={analysisDepth}
+                                onChange={(e) => setAnalysisDepth(e.target.value)}
+                                className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="standard">Standard</option>
+                                <option value="detailed">Detailed</option>
+                                <option value="comprehensive">Comprehensive</option>
+                            </select>
+                            <div className="text-sm text-gray-500">
+                                Current depth: <span className="font-medium text-blue-600">{analysisDepth}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Analysis Results */}
+                    {analysis && (
+                        <div className="space-y-6">
+                            {/* Basic Info */}
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                                    Analysis Summary ({analysisDepth.charAt(0).toUpperCase() + analysisDepth.slice(1)})
+                                </h3>
+                                <p className="text-blue-800">
+                                    Analyzed {analysis.total_bugs_analyzed} bugs with {analysis.recommendations?.length || 0} recommendations generated
+                                </p>
+                            </div>
+
+                            {/* Standard Features */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Recommendations */}
+                                {analysis.recommendations && analysis.recommendations.length > 0 && (
+                                    <div className="bg-white p-6 rounded-lg shadow">
+                                        <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                            AI Recommendations
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {analysis.recommendations.map((rec, index) => (
+                                                <div key={index} className="bg-blue-50 p-4 rounded-lg">
+                                                    <h4 className="font-semibold text-blue-900 mb-2">
+                                                        {rec.category}
+                                                    </h4>
+                                                    <p className="text-sm text-blue-800 mb-2">
+                                                        <strong>Focus:</strong> {rec.focus}
+                                                    </p>
+                                                    <p className="text-sm text-blue-800 mb-2">
+                                                        <strong>Action:</strong> {rec.action}
+                                                    </p>
+                                                    <p className="text-sm text-blue-800">
+                                                        <strong>Testing:</strong> {rec.testing}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Categories */}
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                        Bug Categories
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {Object.entries(analysis.categories || {}).map(([category, bugs]) => {
+                                            if (!bugs || bugs.length === 0) return null;
+                                            return (
+                                                <div key={category} className="bg-gray-50 p-3 rounded">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-medium">{category}</span>
+                                                        <span className="text-sm text-gray-600">
+                                                            {bugs.length} bugs
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Detailed Features (only show for detailed/comprehensive) */}
+                            {(analysisDepth === 'detailed' || analysisDepth === 'comprehensive') && (
+                                <div className="space-y-6">
+                                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                        <h3 className="text-lg font-semibold text-purple-900 mb-2">
+                                            🔍 Enhanced Analysis Features
+                                        </h3>
+                                        <p className="text-sm text-purple-700">
+                                            Additional insights available in {analysisDepth} mode
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Severity Breakdown */}
+                                        {analysis.severity_breakdown && (
+                                            <div className="bg-white p-6 rounded-lg shadow">
+                                                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                                    📊 Severity Breakdown
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    {Object.entries(analysis.severity_breakdown).map(([severity, data]) => (
+                                                        <div key={severity} className="bg-gray-50 p-3 rounded">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="font-medium">{severity}</span>
+                                                                <span className="text-sm text-gray-600">
+                                                                    {data.count} bugs ({data.percentage}%)
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Priority Distribution */}
+                                        {analysis.priority_distribution && (
+                                            <div className="bg-white p-6 rounded-lg shadow">
+                                                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                                    🎯 Priority Distribution
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    {Object.entries(analysis.priority_distribution).map(([priority, data]) => (
+                                                        <div key={priority} className="bg-gray-50 p-3 rounded">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="font-medium">{priority}</span>
+                                                                <span className="text-sm text-gray-600">
+                                                                    {data.count} bugs ({data.percentage}%)
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Temporal Patterns */}
+                                        {analysis.temporal_patterns && (
+                                            <div className="bg-white p-6 rounded-lg shadow">
+                                                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                                    📅 Temporal Patterns
+                                                </h3>
+                                                <div className="space-y-4">
+                                                    {analysis.temporal_patterns.creation_by_day && Object.keys(analysis.temporal_patterns.creation_by_day).length > 0 && (
+                                                        <div>
+                                                            <h4 className="font-medium text-gray-800 mb-2">By Day of Week</h4>
+                                                            <div className="space-y-1">
+                                                                {Object.entries(analysis.temporal_patterns.creation_by_day).map(([day, count]) => (
+                                                                    <div key={day} className="flex justify-between text-sm">
+                                                                        <span>{day}</span>
+                                                                        <span className="font-medium">{count} bugs</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Resolution Analysis */}
+                                        {analysis.resolution_analysis && (
+                                            <div className="bg-white p-6 rounded-lg shadow">
+                                                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                                    ✅ Resolution Analysis
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    <div className="bg-green-50 p-3 rounded">
+                                                        <div className="text-sm font-medium text-green-800">Resolution Success Rate</div>
+                                                        <div className="text-2xl font-bold text-green-600">
+                                                            {analysis.resolution_analysis.resolution_success_rate}%
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Comprehensive Features (only show for comprehensive) */}
+                            {analysisDepth === 'comprehensive' && (
+                                <div className="space-y-6">
+                                    <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                                        <h3 className="text-lg font-semibold text-indigo-900 mb-2">
+                                            🔬 Comprehensive Analysis Features
+                                        </h3>
+                                        <p className="text-sm text-indigo-700">
+                                            Advanced insights only in comprehensive mode
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Impact Assessment */}
+                                        {analysis.impact_assessment && (
+                                            <div className="bg-white p-6 rounded-lg shadow">
+                                                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                                    💼 Business Impact Assessment
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    <div className="flex justify-between items-center p-3 bg-orange-50 rounded">
+                                                        <span className="text-sm font-medium">Customer-Facing Bugs</span>
+                                                        <span className="text-lg font-bold text-orange-600">
+                                                            {analysis.impact_assessment.customer_facing_bugs}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center p-3 bg-red-50 rounded">
+                                                        <span className="text-sm font-medium">Revenue Impact</span>
+                                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                            analysis.impact_assessment.revenue_impact_estimate === 'High' ? 'bg-red-200 text-red-800' :
+                                                            analysis.impact_assessment.revenue_impact_estimate === 'Medium' ? 'bg-yellow-200 text-yellow-800' :
+                                                            'bg-green-200 text-green-800'
+                                                        }`}>
+                                                            {analysis.impact_assessment.revenue_impact_estimate}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                                                        <span className="text-sm font-medium">System Reliability Score</span>
+                                                        <span className="text-lg font-bold text-blue-600">
+                                                            {analysis.impact_assessment.system_reliability_score}/100
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Predictive Insights */}
+                                        {analysis.predictive_insights && analysis.predictive_insights.length > 0 && (
+                                            <div className="bg-white p-6 rounded-lg shadow">
+                                                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                                                    🔮 Predictive Insights
+                                                </h3>
+                                                <div className="space-y-3">
+                                                    {analysis.predictive_insights.map((insight, index) => (
+                                                        <div key={index} className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
+                                                            <div className="flex items-start">
+                                                                <div className="flex-shrink-0">
+                                                                    <span className="text-purple-500 text-lg">💡</span>
+                                                                </div>
+                                                                <div className="ml-3">
+                                                                    <p className="text-sm text-purple-800">
+                                                                        {insight}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Main Application Component
+        const App = () => {
+            const [selectedProject, setSelectedProject] = useState('Legal Cobalt Backlog');
+            const [selectedArea, setSelectedArea] = useState('Legal Cobalt Backlog\\Practical Law AI Optimization-Core');
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <header className="bg-white shadow-sm border-b">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-center py-4">
+                                <div className="flex items-center">
+                                    <h1 className="text-2xl font-bold text-gray-900">
+                                        🤖 AI Bug Analyzer - Analysis Depth Test
+                                    </h1>
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                    Testing Analysis Depth Functionality
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                        <RootCauseAnalysisTab
+                            selectedProject={selectedProject}
+                            selectedArea={selectedArea}
+                        />
+                    </main>
+                </div>
+            );
+        };
+
+        // Render the application
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
