@@ -5,9 +5,20 @@
 .env.test.local
 .env.production.local
 backend/.env
-backend/.env.*
+backend/.env.local
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production.local
 mcp_server/.env
-mcp_server/.env.*
+mcp_server/.env.local
+mcp_server/.env.development.local
+mcp_server/.env.test.local
+mcp_server/.env.production.local
+
+# BUT allow .env.example files (templates for team)
+!backend/.env.example
+!mcp_server/.env.example
+!.env.example
 
 # Python
 __pycache__/
