@@ -180,6 +180,36 @@
         .ai-response {
             white-space: pre-wrap;
             font-family: inherit;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            width: 100%;
+            display: block;
+            color: #ffffff !important;
+            font-weight: 500 !important;
+            line-height: 1.6;
+            font-size: 14px;
+            padding: 0;
+            margin: 0;
+        }
+        
+        /* AI Response container should expand fully */
+        .ai-response-container {
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
+            width: 100%;
+            display: block;
+        }
+        
+        /* Ensure AI response content is fully visible */
+        .bg-white.p-6.rounded-lg.shadow .ai-response,
+        .bg-white.p-6.rounded-lg.shadow .ai-response * {
+            color: #ffffff !important;
+            font-weight: 500 !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
         }
 
         /* Enhanced header styling */
@@ -2007,8 +2037,24 @@
                                 </span>
                             </div>
                             
-                            <div className="ai-response text-gray-700 leading-relaxed">
-                                {response.analysis}
+                            <div className="ai-response-container">
+                                <div className="ai-response text-gray-700 leading-relaxed" style={{
+                                    color: '#ffffff !important',
+                                    fontWeight: '500 !important',
+                                    whiteSpace: 'pre-wrap',
+                                    wordWrap: 'break-word',
+                                    overflowWrap: 'break-word',
+                                    maxWidth: '100%',
+                                    width: '100%',
+                                    display: 'block',
+                                    lineHeight: '1.6',
+                                    fontSize: '14px',
+                                    maxHeight: 'none',
+                                    height: 'auto',
+                                    overflow: 'visible'
+                                }}>
+                                    {response.analysis}
+                                </div>
                             </div>
 
                             {response.insights && response.insights.length > 0 && (
