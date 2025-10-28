@@ -1353,10 +1353,20 @@
                 setError(null);
                 
                 try {
+                    // Map time range to actual days
+                    const timeRangeDays = {
+                        'last_7_days': 7,
+                        'last_30_days': 30,
+                        'last_90_days': 90,
+                        'last_180_days': 180
+                    };
+                    
+                    const days = timeRangeDays[timeRange] || 30;
+                    
                     // Load comprehensive analytics data
                     const [statsResponse, trendsResponse] = await Promise.all([
-                        apiCall(`/bugs/stats?project_name=${encodeURIComponent(selectedProject)}&area_path=${encodeURIComponent(selectedArea || '')}&days=180&date_field=changed_date`),
-                        apiCall(`/analytics/trend-analysis?project_name=${encodeURIComponent(selectedProject)}&area_path=${encodeURIComponent(selectedArea || '')}&days_back=30&interval=daily`)
+                        apiCall(`/bugs/stats?project_name=${encodeURIComponent(selectedProject)}&area_path=${encodeURIComponent(selectedArea || '')}&days_back=${days}`),
+                        apiCall(`/analytics/trend-analysis?project_name=${encodeURIComponent(selectedProject)}&area_path=${encodeURIComponent(selectedArea || '')}&days_back=${days}&interval=daily`)
                     ]);
                     
                     setAnalyticsData({
