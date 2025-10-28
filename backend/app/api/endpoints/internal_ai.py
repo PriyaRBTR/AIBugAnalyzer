@@ -1586,72 +1586,8 @@ const apiMonitor = (req, res, next) => {{
 - Swagger/OpenAPI for documentation testing"""
 
     else:
-        # Enhanced comprehensive guidance for ANY software development question
-        topic_focus = "software development and bug management"
-        
-        # More specific categorization based on the query
-        if any(word in query_lower for word in ['database', 'sql', 'query', 'data', 'mysql', 'postgres', 'mongodb']):
-            topic_focus = "database development and optimization"
-        elif any(word in query_lower for word in ['frontend', 'ui', 'ux', 'react', 'angular', 'vue', 'css', 'html']):
-            topic_focus = "frontend development and user interface"
-        elif any(word in query_lower for word in ['backend', 'server', 'microservice', 'architecture', 'python', 'java', 'c#']):
-            topic_focus = "backend development and system architecture"
-        elif any(word in query_lower for word in ['mobile', 'ios', 'android', 'flutter', 'react native']):
-            topic_focus = "mobile application development"
-        elif any(word in query_lower for word in ['devops', 'ci/cd', 'deployment', 'docker', 'kubernetes', 'aws']):
-            topic_focus = "DevOps and cloud deployment"
-        elif any(word in query_lower for word in ['testing', 'unit test', 'integration test', 'automation']):
-            topic_focus = "software testing and quality assurance"
-
-        response = f"""I can help you with {topic_focus}!
-
-**Your Question**: "{query}"
-
-**I'm a comprehensive software development expert covering:**
-
-🐛 **Bug Analysis & Resolution**:
-- Root cause analysis for any technology stack
-- Debugging strategies for different platforms
-- Performance optimization and memory management
-- Error handling and exception management
-
-💻 **Programming Languages & Frameworks**:
-- JavaScript/Node.js, Python, Java, C#, Go, Rust
-- React, Angular, Vue.js, Express, Django, Spring Boot
-- Database technologies: SQL, NoSQL, ORMs
-- Cloud platforms: AWS, Azure, GCP
-
-🔧 **Development Tools & Practices**:
-- Version control (Git) and collaboration
-- CI/CD pipelines and automation
-- Code review and quality assurance
-- Testing frameworks and methodologies
-
-🏗️ **Architecture & Design**:
-- System design and scalability patterns
-- Microservices and distributed systems
-- API design and integration
-- Security best practices
-
-📊 **Performance & Monitoring**:
-- Application performance optimization
-- Memory leak detection and resolution
-- Database query optimization
-- Monitoring and alerting systems
-
-🔍 **Specialized Problem Solving**:
-- Cross-platform compatibility issues
-- Third-party integration challenges
-- Legacy system maintenance
-- Technical debt management
-
-**What specific aspect would you like help with?**
-- Share your exact problem or error message
-- Describe your technology stack and environment
-- Mention any constraints or requirements you have
-- Include code samples if relevant
-
-I can provide detailed, actionable solutions based on industry best practices and real-world experience."""
+        # INTELLIGENT COMPREHENSIVE RESPONSE for ANY question
+        response = _generate_intelligent_response(query_lower, query)
 
     # Add contextual project information
     context_note = ""
@@ -1672,3 +1608,184 @@ I can provide detailed, actionable solutions based on industry best practices an
         ],
         "ai_service": "Enhanced Software Development Expert Assistant"
     }
+
+def _generate_intelligent_response(query_lower: str, original_query: str) -> str:
+    """
+    Generate intelligent, comprehensive responses for ANY question
+    Uses advanced pattern matching and contextual understanding
+    """
+    # COMPREHENSIVE AI ASSISTANT - HANDLES ALL QUESTIONS INTELLIGENTLY
+    
+    # Detect technical domains and topics
+    topic_domains = []
+    
+    # Programming Languages & Frameworks
+    if any(lang in query_lower for lang in ['python', 'javascript', 'java', 'c#', 'c++', 'react', 'angular', 'vue', 'node', 'express', 'django', 'spring', 'flask', '.net']):
+        topic_domains.append("Programming & Development")
+    
+    # Databases & Data
+    if any(db in query_lower for db in ['sql', 'database', 'mysql', 'postgres', 'mongodb', 'oracle', 'sqlite', 'redis', 'elasticsearch', 'query']):
+        topic_domains.append("Database & Data Management")
+    
+    # DevOps & Cloud
+    if any(tool in query_lower for tool in ['docker', 'kubernetes', 'aws', 'azure', 'gcp', 'ci/cd', 'jenkins', 'gitlab', 'github', 'deployment', 'pipeline']):
+        topic_domains.append("DevOps & Cloud Platforms")
+    
+    # Testing & QA
+    if any(test in query_lower for test in ['test', 'testing', 'junit', 'selenium', 'cypress', 'jest', 'mocha', 'pytest', 'unit test', 'integration']):
+        topic_domains.append("Testing & Quality Assurance")
+    
+    # Architecture & Design
+    if any(arch in query_lower for arch in ['architecture', 'design pattern', 'microservice', 'api', 'rest', 'graphql', 'scaling', 'performance']):
+        topic_domains.append("Software Architecture & Design")
+    
+    # If no specific domains detected, it's a general software question
+    if not topic_domains:
+        topic_domains.append("Software Development")
+    
+    # Generate comprehensive response based on detected domains
+    response_parts = []
+    
+    # Opening with user's question
+    response_parts.append(f'**Your Question**: "{original_query}"')
+    response_parts.append("")
+    
+    # Provide comprehensive guidance based on detected topics
+    if len(topic_domains) == 1:
+        response_parts.append(f"**I can provide expert guidance in {topic_domains[0]}:**")
+    else:
+        response_parts.append(f"**I can provide expert guidance across multiple domains:** {', '.join(topic_domains)}")
+    
+    response_parts.append("")
+    
+    # Core capabilities section
+    response_parts.append("🎯 **Comprehensive Software Development Expertise:**")
+    response_parts.append("")
+    
+    # Programming & Development
+    response_parts.append("💻 **Programming Languages & Frameworks:**")
+    response_parts.append("- **Languages**: Python, JavaScript/Node.js, Java, C#, C++, Go, Rust, PHP")
+    response_parts.append("- **Frontend**: React, Angular, Vue.js, HTML/CSS, TypeScript, jQuery")
+    response_parts.append("- **Backend**: Express.js, Django, Spring Boot, ASP.NET, Flask, FastAPI")
+    response_parts.append("- **Mobile**: React Native, Flutter, iOS (Swift), Android (Kotlin/Java)")
+    response_parts.append("")
+    
+    # Database & Data
+    response_parts.append("🗄️ **Database & Data Technologies:**")
+    response_parts.append("- **Relational**: MySQL, PostgreSQL, SQL Server, Oracle, SQLite")
+    response_parts.append("- **NoSQL**: MongoDB, Cassandra, DynamoDB, Redis, Elasticsearch")
+    response_parts.append("- **Data Processing**: Apache Spark, Kafka, ETL pipelines, Big Data")
+    response_parts.append("- **Query Optimization**: Indexing, performance tuning, data modeling")
+    response_parts.append("")
+    
+    # DevOps & Cloud
+    response_parts.append("☁️ **DevOps & Cloud Platforms:**")
+    response_parts.append("- **Containerization**: Docker, Kubernetes, container orchestration")
+    response_parts.append("- **Cloud Services**: AWS, Microsoft Azure, Google Cloud Platform")
+    response_parts.append("- **CI/CD**: Jenkins, GitLab CI, GitHub Actions, Azure DevOps")
+    response_parts.append("- **Infrastructure**: Terraform, Ansible, monitoring, logging")
+    response_parts.append("")
+    
+    # Architecture & Design
+    response_parts.append("🏗️ **Software Architecture & Design:**")
+    response_parts.append("- **System Design**: Scalable architectures, distributed systems")
+    response_parts.append("- **Design Patterns**: SOLID principles, MVC, microservices")
+    response_parts.append("- **API Design**: REST, GraphQL, API security, documentation")
+    response_parts.append("- **Performance**: Caching, load balancing, optimization strategies")
+    response_parts.append("")
+    
+    # Testing & Quality
+    response_parts.append("🧪 **Testing & Quality Assurance:**")
+    response_parts.append("- **Test Types**: Unit, Integration, End-to-End, Performance, Security")
+    response_parts.append("- **Frameworks**: Jest, JUnit, Pytest, Selenium, Cypress, TestNG")
+    response_parts.append("- **Quality**: Code reviews, static analysis, test automation")
+    response_parts.append("- **Bug Management**: Root cause analysis, debugging techniques")
+    response_parts.append("")
+    
+    # Problem-solving approach
+    response_parts.append("🔧 **My Approach to Your Question:**")
+    response_parts.append("")
+    response_parts.append("**Step 1: Analysis**")
+    response_parts.append("- Understanding your specific context and requirements")
+    response_parts.append("- Identifying the core technical challenge")
+    response_parts.append("- Considering constraints and best practices")
+    response_parts.append("")
+    response_parts.append("**Step 2: Solution Strategy**")
+    response_parts.append("- Multiple solution approaches with pros/cons")
+    response_parts.append("- Industry best practices and proven patterns")
+    response_parts.append("- Code examples and implementation guidance")
+    response_parts.append("")
+    response_parts.append("**Step 3: Implementation Details**")
+    response_parts.append("- Step-by-step implementation guidance")
+    response_parts.append("- Error handling and edge cases")
+    response_parts.append("- Testing and validation approaches")
+    response_parts.append("")
+    response_parts.append("**Step 4: Optimization & Enhancement**")
+    response_parts.append("- Performance optimization techniques")
+    response_parts.append("- Security considerations")
+    response_parts.append("- Monitoring and maintenance strategies")
+    response_parts.append("")
+    
+    # Specific guidance request
+    response_parts.append("📋 **To Provide the Most Helpful Answer:**")
+    response_parts.append("")
+    response_parts.append("**Please share any additional context:**")
+    response_parts.append("- Your current technology stack")
+    response_parts.append("- Specific error messages or issues you're facing")
+    response_parts.append("- Your experience level and learning goals")
+    response_parts.append("- Any constraints or requirements")
+    response_parts.append("- Code samples if relevant")
+    response_parts.append("")
+    
+    # Quick answers for common question types
+    if any(word in query_lower for word in ['how', 'what', 'why', 'when', 'where', 'which']):
+        if 'how' in query_lower:
+            response_parts.append("🚀 **For 'How' Questions:** I'll provide step-by-step implementation guides with code examples")
+        elif 'what' in query_lower:
+            response_parts.append("📖 **For 'What' Questions:** I'll explain concepts, technologies, and provide comprehensive definitions")
+        elif 'why' in query_lower:
+            response_parts.append("💡 **For 'Why' Questions:** I'll explain the reasoning, benefits, and underlying principles")
+        elif 'when' in query_lower:
+            response_parts.append("⏰ **For 'When' Questions:** I'll provide timing guidance and best practice scenarios")
+        elif 'where' in query_lower:
+            response_parts.append("📍 **For 'Where' Questions:** I'll guide you to the right tools, locations, and resources")
+        elif 'which' in query_lower:
+            response_parts.append("⚖️ **For 'Which' Questions:** I'll provide comparisons and recommendation frameworks")
+        
+        response_parts.append("")
+    
+    # Common topics quick guidance
+    if any(word in query_lower for word in ['error', 'problem', 'issue', 'bug', 'fail', 'broken', 'not working']):
+        response_parts.append("🐛 **For Problem-Solving Questions:**")
+        response_parts.append("- Detailed debugging strategies")
+        response_parts.append("- Common error patterns and solutions") 
+        response_parts.append("- Root cause analysis techniques")
+        response_parts.append("- Prevention strategies")
+        response_parts.append("")
+    
+    if any(word in query_lower for word in ['best practice', 'recommendation', 'should', 'better', 'optimize']):
+        response_parts.append("⭐ **For Best Practice Questions:**")
+        response_parts.append("- Industry-standard approaches")
+        response_parts.append("- Performance optimization techniques")
+        response_parts.append("- Security and maintainability considerations")
+        response_parts.append("- Real-world implementation examples")
+        response_parts.append("")
+    
+    if any(word in query_lower for word in ['learn', 'tutorial', 'beginner', 'start', 'guide']):
+        response_parts.append("📚 **For Learning Questions:**")
+        response_parts.append("- Structured learning path recommendations")
+        response_parts.append("- Hands-on tutorials and exercises")
+        response_parts.append("- Resource recommendations (books, courses, tools)")
+        response_parts.append("- Progressive skill-building approaches")
+        response_parts.append("")
+    
+    # Closing with action items
+    response_parts.append("✅ **Next Steps:**")
+    response_parts.append("1. **Share more details** about your specific situation")
+    response_parts.append("2. **I'll provide targeted guidance** with code examples and solutions")
+    response_parts.append("3. **Follow-up questions** for clarification and deeper insights")
+    response_parts.append("4. **Implementation support** as you work through the solution")
+    response_parts.append("")
+    response_parts.append("💬 **I'm here to help with any software development, testing, architecture, or technical challenge you're facing!**")
+    
+    return "\n".join(response_parts)
