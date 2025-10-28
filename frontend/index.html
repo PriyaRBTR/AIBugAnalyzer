@@ -938,11 +938,7 @@
             );
 
             if (!dashboardData) {
-                return (
-                    <div className="text-center py-8">
-                        <p className="text-gray-500">Please select a project and area path to view dashboard</p>
-                    </div>
-                );
+                return null; // Don't show duplicate message, it's already shown in the project selector area
             }
 
             const stats = dashboardData.statistics;
