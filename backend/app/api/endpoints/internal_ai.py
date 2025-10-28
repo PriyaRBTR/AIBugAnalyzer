@@ -724,6 +724,195 @@ function analyzeBugPatterns(bugs) {{
 - Statistical analysis tools (R, Python)
 - Machine learning for pattern detection"""
 
+    elif any(word in query_lower for word in ['reproduce', 'reproduction', 'reproducing', 'replicate', 'replicating']) and any(word in query_lower for word in ['bug', 'bugs', 'issue', 'issues']):
+        response = f"""Best Practices for Bug Reproduction:
+
+**1. Systematic Reproduction Process:**
+
+**Initial Setup:**
+- Document the exact environment (OS, browser, app version)
+- Note the user role, permissions, and data state
+- Record the time and circumstances when bug occurred
+- Capture the user's workflow leading to the issue
+
+**Step-by-Step Reproduction:**
+- Write clear, numbered steps that anyone can follow
+- Include specific data inputs, clicks, and user actions
+- Note timing between actions if relevant
+- Document what should happen vs. what actually happens
+
+**Example Format:**
+```
+**Environment:** Windows 11, Chrome 118, App v2.1.0
+**User Role:** Standard User
+**Prerequisites:** User must be logged in with sample data
+
+**Steps to Reproduce:**
+1. Navigate to User Profile page
+2. Click "Edit Profile" button
+3. Modify email field to "test@invalid-domain"
+4. Click "Save Changes" button
+5. Observe the error message
+
+**Expected Result:** Clear validation error about invalid email format
+**Actual Result:** Generic "Save failed" error with no details
+**Reproduction Rate:** 10/10 attempts (100%)
+```
+
+**2. Environment Documentation:**
+
+**System Information:**
+- Operating System and version
+- Browser type and version (including extensions)
+- Application version and build number
+- Screen resolution and zoom level
+- Network conditions (if relevant)
+
+**Data Context:**
+- User account type and permissions
+- Specific data set or test data being used
+- Database state or test environment
+- Any recent changes or deployments
+
+**3. Advanced Reproduction Techniques:**
+
+**Edge Case Testing:**
+- Try different user roles and permissions
+- Test with various data sizes and types
+- Attempt reproduction in different browsers
+- Test on different devices/screen sizes
+- Verify behavior during peak usage times
+
+**Variable Isolation:**
+- Change one variable at a time to identify root cause
+- Test with minimal data set vs. large data set
+- Try different user workflows leading to the same action
+- Compare behavior in different environments
+
+**4. Documentation Best Practices:**
+
+**Comprehensive Evidence Collection:**
+- Screenshots of each step (before/after states)
+- Screen recordings for complex workflows
+- Browser console logs and network activity
+- Server logs and error messages
+- Database queries and results (if applicable)
+
+**Clear Communication:**
+```
+**Bug Title:** [Component] - [Brief description of issue]
+Example: "User Profile - Email validation shows generic error message"
+
+**Priority/Severity Assessment:**
+- How many users are affected?
+- What business functions are impacted?
+- Is there a workaround available?
+- How often does this occur?
+```
+
+**5. Reproduction Verification:**
+
+**Multi-Environment Testing:**
+- Reproduce in development environment
+- Verify in staging/test environment
+- Check if issue exists in production
+- Test across different deployment versions
+
+**Collaboration:**
+- Have another team member follow your steps
+- Verify reproduction with different user accounts
+- Test with different data sets
+- Confirm issue persists after browser restart/cache clear
+
+**6. Common Reproduction Challenges:**
+
+**Intermittent Issues:**
+- Document frequency and timing patterns
+- Note any triggers or conditions that increase likelihood
+- Collect logs over extended periods
+- Use automated testing to catch sporadic issues
+
+**Data-Dependent Issues:**
+- Identify specific data characteristics that cause the problem
+- Create test data sets that reliably trigger the issue
+- Document data relationships and dependencies
+- Note any data transformation or processing involved
+
+**Environment-Specific Issues:**
+- Compare configurations between environments
+- Document differences in setup, data, or versions
+- Test with production-like data volumes
+- Consider network, security, or integration differences
+
+**7. Tools for Enhanced Reproduction:**
+
+**Browser Developer Tools:**
+- Network tab for API calls and responses
+- Console for JavaScript errors and warnings
+- Application tab for storage and cookies
+- Performance tab for timing and resource usage
+
+**Screen Recording Tools:**
+- Loom, OBS, or built-in OS screen recording
+- Include audio narration explaining actions
+- Highlight mouse clicks and keyboard input
+- Keep recordings concise but comprehensive
+
+**Bug Tracking Integration:**
+```
+**Attachments:**
+- reproduction_steps.mp4 (screen recording)
+- console_errors.txt (browser console logs)
+- network_activity.har (network capture)
+- screenshots/ (folder with step-by-step images)
+```
+
+**8. Reproduction Quality Checklist:**
+
+✅ **Before Submitting:**
+- [ ] Steps are clear and can be followed by someone else
+- [ ] Environment details are documented completely
+- [ ] Expected vs. actual results are clearly stated
+- [ ] Reproduction rate is provided (X/Y attempts)
+- [ ] Screenshots/recordings are attached
+- [ ] Console logs are included if applicable
+- [ ] Business impact is assessed
+- [ ] Similar existing bugs have been checked
+
+**9. Effective Communication:**
+
+**For Developers:**
+- Include technical details like stack traces
+- Provide database queries that expose the issue
+- Share configuration differences between environments
+- Note any recent code changes that might be related
+
+**For Testers:**
+- Document test scenarios and expected outcomes
+- Include boundary conditions and edge cases
+- Share test data requirements and setup
+- Provide regression test scenarios
+
+**For Product Managers:**
+- Focus on user impact and business consequences
+- Include user workflow context and goals
+- Document frequency and user demographics affected
+- Suggest priority based on business impact
+
+**10. Continuous Improvement:**
+
+**Learn from Patterns:**
+- Track which reproduction techniques work best
+- Identify common gaps in initial bug reports
+- Develop templates for recurring issue types
+- Share best practices with the team
+
+**Automation Opportunities:**
+- Create automated tests for frequently occurring issues
+- Build test data generators for complex scenarios
+- Implement monitoring for reproduction validation
+- Set up automated regression testing"""
+
     elif any(word in query_lower for word in ['duplicate', 'duplicates', 'similar']):
         response = f"""Managing Duplicate Bugs in Azure DevOps:
 
