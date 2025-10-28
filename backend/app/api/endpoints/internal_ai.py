@@ -360,8 +360,66 @@ async def _generate_fallback_response(query: str, context: str, project_name: st
 
 After creation, the bug will enter "New" state and can be triaged by the team."""
 
-    elif any(word in query_lower for word in ['triage', 'triaging', 'prioritize', 'assign']):
-        response = f"""Effective Bug Triage in Azure DevOps:
+    elif any(word in query_lower for word in ['priority', 'prioritize', 'triage', 'triaging', 'assign']) or 'priority' in query_lower:
+        # Check if the question is specifically about environment-specific bugs
+        if any(phrase in query_lower for phrase in ['lower environment', 'lower env', 'dev environment', 'test environment', 'staging']):
+            response = f"""**Bug Priority for Lower Environment Issues:**
+
+**Your Question**: "{query}"
+
+**Environment-Specific Bug Priority Guidelines:**
+
+🔍 **If a bug is ONLY reproducible in lower environments (Dev/Test/Staging):**
+
+**Recommended Priority: Priority 3 (Medium) or Priority 4 (Low)**
+
+**Decision Factors:**
+
+1. **Environment Impact Assessment**:
+   - **Lower environments only** → Generally Priority 3-4
+   - **Blocking development/testing** → Priority 2-3
+   - **Production risk potential** → Priority 2-3
+   - **Cosmetic/minor issues** → Priority 4
+
+2. **Business Impact Considerations**:
+   - **Does it block other developers?** → Higher priority
+   - **Will it reach production?** → Higher priority
+   - **Is there a workaround?** → Lower priority
+   - **Timeline to production deployment** → Affects urgency
+
+3. **Technical Assessment**:
+   - **Configuration difference** → Priority 4 (environment-specific config)
+   - **Data difference** → Priority 3 (could affect production with similar data)
+   - **Code logic flaw** → Priority 2-3 (will likely appear in production)
+   - **Environment setup issue** → Priority 4
+
+**Recommended Action Plan:**
+
+✅ **Priority 3 (Medium)** if:
+- Bug could potentially occur in production
+- Blocks testing of important features
+- Affects multiple team members
+- Root cause unclear
+
+✅ **Priority 4 (Low)** if:
+- Environment-specific configuration issue
+- Doesn't block critical development work
+- Clear workaround available
+- Isolated to specific test data/setup
+
+**Additional Considerations:**
+- Document environment differences in bug description
+- Include environment configuration details
+- Test in production-like environment if possible
+- Monitor for similar issues in higher environments
+
+**Example Scenarios:**
+- **P4**: SSL certificate error in dev environment only
+- **P3**: Database connection timeout in test environment (could happen in prod)
+- **P2**: Authentication failing in staging (production deployment risk)
+- **P4**: UI styling issue only in dev environment with specific test data"""
+        else:
+            response = f"""Effective Bug Triage in Azure DevOps:
 
 **Triage Process (Daily/Weekly):**
 
