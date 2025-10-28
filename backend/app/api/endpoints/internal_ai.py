@@ -559,6 +559,171 @@ AND [Area Path] = @Project
 - Save frequently used queries for quick access
 - Use @Me, @Today, @CurrentIteration macros"""
 
+    elif any(word in query_lower for word in ['pattern', 'patterns', 'recurring', 'repeat', 'trend', 'identify']) and any(word in query_lower for word in ['bug', 'bugs', 'issue', 'issues']):
+        response = f"""Identifying Patterns in Recurring Bugs:
+
+**1. Data Analysis Approaches:**
+
+**Bug Frequency Analysis:**
+- Track bugs by component/area over time
+- Identify modules with highest bug density
+- Monitor bug recurrence in same areas
+- Analyze fix success rates by component
+
+**Common Bug Patterns to Look For:**
+
+🔍 **By Location/Component:**
+- Same module/file repeatedly having issues
+- Specific API endpoints causing problems
+- Database queries frequently timing out
+- UI components with consistent rendering issues
+
+🔍 **By Type/Category:**
+- Authentication/authorization failures
+- Memory leaks in specific scenarios  
+- Integration point failures
+- Performance degradation patterns
+
+🔍 **By Timing:**
+- Bugs occurring after deployments
+- Issues during peak usage times
+- Problems following specific user actions
+- Seasonal or cyclical bug patterns
+
+**2. Technical Investigation Methods:**
+
+**Code Analysis:**
+```sql
+-- Query to find bug hotspots by area
+SELECT [Area Path], COUNT(*) as BugCount, 
+       AVG([Priority]) as AvgPriority
+FROM workitems 
+WHERE [Work Item Type] = 'Bug'
+AND [Created Date] >= @Today - 90
+GROUP BY [Area Path]
+ORDER BY BugCount DESC
+```
+
+**Log Analysis Patterns:**
+- Exception stack traces pointing to same methods
+- Error message clustering and categorization
+- Performance metrics showing consistent bottlenecks
+- User behavior patterns leading to failures
+
+**3. Root Cause Categories:**
+
+**Code Quality Issues:**
+- Insufficient error handling
+- Missing input validation  
+- Race conditions in concurrent code
+- Memory management problems
+
+**Architecture Problems:**
+- Tight coupling between components
+- Missing circuit breakers
+- Inadequate logging/monitoring
+- Poor error propagation
+
+**Process Issues:**
+- Inadequate testing coverage
+- Missing code review processes
+- Deployment pipeline gaps
+- Documentation deficiencies
+
+**4. Pattern Detection Tools & Techniques:**
+
+**Azure DevOps Queries:**
+```sql
+-- Find bugs with similar titles
+SELECT [ID], [Title], [Area Path], [Created Date]
+FROM workitems
+WHERE [Work Item Type] = 'Bug'
+AND [Title] CONTAINS 'timeout'
+ORDER BY [Created Date] DESC
+
+-- Bug trends by sprint
+SELECT [Iteration Path], COUNT(*) as NewBugs,
+       SUM(CASE WHEN [State] = 'Closed' THEN 1 ELSE 0 END) as ResolvedBugs
+FROM workitems
+WHERE [Work Item Type] = 'Bug'
+GROUP BY [Iteration Path]
+```
+
+**Statistical Analysis:**
+- Calculate bug arrival rates by component
+- Measure mean time to resolution by bug type
+- Track defect escape rates from testing
+- Monitor customer-reported vs. internally found bugs
+
+**5. Preventive Actions Based on Patterns:**
+
+**For Code Hotspots:**
+- Refactor problematic modules
+- Add comprehensive unit tests
+- Implement better error handling
+- Consider architectural changes
+
+**For Process Issues:**
+- Enhance code review checklists
+- Add automated testing for problem areas
+- Implement pre-deployment validation
+- Create component-specific documentation
+
+**For System Issues:**
+- Add monitoring and alerting
+- Implement circuit breakers
+- Improve logging and diagnostics
+- Performance optimization initiatives
+
+**6. Monitoring & Alerting:**
+
+```javascript
+// Example: Bug pattern monitoring
+const bugPatterns = {{
+  frequentAreas: [],
+  commonErrors: [],
+  userImpactTrends: []
+}};
+
+function analyzeBugPatterns(bugs) {{
+  // Group bugs by area path
+  const areaGroups = bugs.reduce((groups, bug) => {{
+    const area = bug.areaPath || 'Unknown';
+    if (!groups[area]) groups[area] = [];
+    groups[area].push(bug);
+    return groups;
+  }}, {{}});
+  
+  // Find areas with > 5 bugs in 30 days
+  const hotspots = Object.entries(areaGroups)
+    .filter(([area, bugs]) => bugs.length > 5)
+    .map(([area, bugs]) => ({{ area, count: bugs.length }}));
+  
+  return hotspots;
+}}
+```
+
+**7. Regular Pattern Review Process:**
+
+**Weekly Reviews:**
+- Top 5 bug areas by volume
+- New vs. recurring issue analysis
+- Customer impact assessment
+- Quick win identification
+
+**Monthly Deep Dives:**
+- Trend analysis across quarters
+- Root cause category distribution
+- Team performance metrics
+- Process improvement opportunities
+
+**Tools for Pattern Analysis:**
+- Azure DevOps Analytics & Reporting
+- Power BI for advanced visualization
+- Custom scripts for log analysis
+- Statistical analysis tools (R, Python)
+- Machine learning for pattern detection"""
+
     elif any(word in query_lower for word in ['duplicate', 'duplicates', 'similar']):
         response = f"""Managing Duplicate Bugs in Azure DevOps:
 
