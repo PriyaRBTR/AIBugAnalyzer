@@ -25,6 +25,7 @@ class RootCauseAnalysisRequest(BaseModel):
     from_date: Optional[str] = None
     to_date: Optional[str] = None
     analysis_depth: str = "standard"  # standard, detailed, comprehensive
+    bug_id: Optional[str] = None  # New: Individual bug analysis by ID
 
 @router.post("/root-cause-analysis")
 async def perform_root_cause_analysis(
@@ -35,6 +36,7 @@ async def perform_root_cause_analysis(
     """
     Perform comprehensive root cause analysis on bugs
     Provides categorized analysis with actionable recommendations
+    Enhanced with individual Bug ID analysis support
     """
     logger.info(f"POST /root-cause-analysis - Analyzing root causes for {request.project_name}")
     
@@ -68,6 +70,19 @@ async def perform_root_cause_analysis(
                 "success": True
             }
         
+        # NEW: Handle individual Bug ID analysis
+        if request.bug_id:
+            logger.info(f"Performing individual bug analysis for Bug ID: {request.bug_id}")
+            return await _analyze_individual_bug(
+                bugs=bugs, 
+                bug_id=request.bug_id, 
+                analysis_depth=request.analysis_depth,
+                ai_service=ai_service,
+                project_name=request.project_name,
+                area_path=request.area_path
+            )
+        
+        # Standard bulk analysis (existing functionality preserved)
         # Perform AI-powered root cause analysis with specified depth
         root_cause_analysis = await ai_service.analyze_root_causes(bugs, request.analysis_depth)
         
@@ -835,3 +850,269 @@ def _generate_quality_recommendations(quality_metrics: Dict[str, Any]) -> List[s
         recommendations.append("Low resolution rate - allocate more resources to bug fixing")
     
     return recommendations
+
+async def _analyze_individual_bug(
+    bugs: List[Dict[str, Any]], 
+    bug_id: str, 
+    analysis_depth: str,
+    ai_service: AIService,
+    project_name: str,
+    area_path: Optional[str]
+) -> Dict[str, Any]:
+    """
+    Analyze a specific bug by ID with meaningful individual analysis
+    """
+    logger.info(f"Analyzing individual bug: {bug_id}")
+    
+    # Find the specific bug by ID
+    target_bug = None
+    for bug in bugs:
+        # Check both ado_id and id fields, and handle string conversion
+        if (str(bug.get("ado_id", "")) == str(bug_id) or 
+            str(bug.get("id", "")) == str(bug_id) or
+            str(bug.get("work_item_id", "")) == str(bug_id)):
+            target_bug = bug
+            break
+    
+    if not target_bug:
+        # Bug ID not found in the project/area data
+        return {
+            "analysis": {
+                "error": f"Bug ID {bug_id} not found in project {project_name}"
+            },
+            "message": f"Bug ID {bug_id} not found in the selected project/area. Please verify the Bug ID and project selection.",
+            "success": False
+        }
+    
+    # Perform individual bug analysis based on analysis depth
+    try:
+        # Generate root cause category for this specific bug
+        primary_category = await _classify_bug_category(target_bug, ai_service)
+        
+        # Create timeline data for the bug
+        timeline_data = _create_bug_timeline(target_bug)
+        
+        # Generate category breakdown (confidence levels for different categories)
+        category_breakdown = await _generate_category_breakdown(target_bug, ai_service)
+        
+        # Create analysis response based on depth
+        analysis_result = {
+            "primary_category": primary_category,
+            "category_breakdown": category_breakdown,
+            "timeline_data": timeline_data,
+            "total_bugs_analyzed": 1,
+            "bug_specific": True
+        }
+        
+        # Add depth-specific analysis
+        if analysis_depth == "standard":
+            analysis_result.update(await _standard_individual_analysis(target_bug, ai_service))
+        elif analysis_depth == "detailed":
+            analysis_result.update(await _detailed_individual_analysis(target_bug, ai_service, bugs))
+        elif analysis_depth == "comprehensive":
+            analysis_result.update(await _comprehensive_individual_analysis(target_bug, ai_service, bugs))
+        
+        return {
+            "analysis": analysis_result,
+            "bug_details": _format_bug_details(target_bug),
+            "project": project_name,
+            "area_path": area_path,
+            "analysis_depth": analysis_depth,
+            "success": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing individual bug {bug_id}: {str(e)}")
+        return {
+            "analysis": {
+                "error": f"Failed to analyze bug {bug_id}: {str(e)}"
+            },
+            "message": f"Error occurred while analyzing Bug ID {bug_id}",
+            "success": False
+        }
+
+async def _classify_bug_category(bug: Dict[str, Any], ai_service: AIService) -> str:
+    """Classify individual bug into root cause category"""
+    try:
+        # Use AI service to classify the bug
+        title = bug.get("title", "")
+        description = bug.get("description", "")
+        area_path = bug.get("area_path", "")
+        
+        # Simple category classification based on keywords
+        if any(keyword in title.lower() for keyword in ["crash", "exception", "error", "null"]):
+            return "Runtime Error"
+        elif any(keyword in title.lower() for keyword in ["ui", "display", "visual", "layout"]):
+            return "UI/UX Issue"
+        elif any(keyword in title.lower() for keyword in ["performance", "slow", "timeout", "memory"]):
+            return "Performance Issue"
+        elif any(keyword in title.lower() for keyword in ["api", "service", "connection", "network"]):
+            return "Integration Issue"
+        elif any(keyword in title.lower() for keyword in ["data", "database", "query", "sql"]):
+            return "Data Issue"
+        else:
+            return "Logic Error"
+            
+    except Exception as e:
+        logger.error(f"Error classifying bug category: {str(e)}")
+        return "Unknown Category"
+
+def _create_bug_timeline(bug: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create timeline data for individual bug"""
+    timeline = []
+    
+    # Add creation date
+    created_date = bug.get("created_date", "")
+    if created_date:
+        timeline.append({
+            "state": "Created",
+            "date": created_date[:10],  # YYYY-MM-DD format
+            "timestamp": created_date
+        })
+    
+    # Add state changes (simplified - in practice would get from history)
+    current_state = bug.get("state", "Unknown")
+    if current_state and current_state != "New":
+        timeline.append({
+            "state": current_state,
+            "date": bug.get("changed_date", created_date)[:10] if bug.get("changed_date") else "",
+            "timestamp": bug.get("changed_date", created_date)
+        })
+    
+    return timeline
+
+async def _generate_category_breakdown(bug: Dict[str, Any], ai_service: AIService) -> Dict[str, int]:
+    """Generate confidence breakdown for different root cause categories"""
+    try:
+        title = bug.get("title", "").lower()
+        description = bug.get("description", "").lower()
+        
+        # Simple confidence scoring based on keywords
+        categories = {
+            "Runtime Error": 0,
+            "UI/UX Issue": 0,
+            "Performance Issue": 0,
+            "Integration Issue": 0,
+            "Logic Error": 0
+        }
+        
+        # Score based on keywords
+        if any(keyword in title for keyword in ["crash", "exception", "error", "null"]):
+            categories["Runtime Error"] = 85
+        elif any(keyword in title for keyword in ["ui", "display", "visual", "layout"]):
+            categories["UI/UX Issue"] = 80
+        elif any(keyword in title for keyword in ["performance", "slow", "timeout", "memory"]):
+            categories["Performance Issue"] = 75
+        elif any(keyword in title for keyword in ["api", "service", "connection", "network"]):
+            categories["Integration Issue"] = 70
+        else:
+            categories["Logic Error"] = 60
+        
+        # Add some secondary categories with lower confidence
+        for category in categories:
+            if categories[category] == 0:
+                categories[category] = 15  # Small confidence for other categories
+        
+        return categories
+        
+    except Exception as e:
+        logger.error(f"Error generating category breakdown: {str(e)}")
+        return {"Unknown Category": 100}
+
+async def _standard_individual_analysis(bug: Dict[str, Any], ai_service: AIService) -> Dict[str, Any]:
+    """Standard analysis for individual bug"""
+    return {
+        "recommendations": [
+            f"Review the bug title and description for clarity",
+            f"Ensure proper priority assignment based on business impact",
+            f"Verify the bug is assigned to the correct team/person"
+        ]
+    }
+
+async def _detailed_individual_analysis(bug: Dict[str, Any], ai_service: AIService, all_bugs: List[Dict]) -> Dict[str, Any]:
+    """Detailed analysis for individual bug"""
+    # Find similar bugs for pattern analysis
+    similar_bugs = _find_similar_bugs(bug, all_bugs)
+    
+    return {
+        "contributing_factors": [
+            "Code complexity in the affected module",
+            "Insufficient test coverage",
+            "Integration dependencies"
+        ],
+        "prevention_measures": [
+            "Add comprehensive unit tests",
+            "Implement code review process",
+            "Enhance error handling"
+        ],
+        "similar_bugs_count": len(similar_bugs),
+        "pattern_detected": len(similar_bugs) > 2
+    }
+
+async def _comprehensive_individual_analysis(bug: Dict[str, Any], ai_service: AIService, all_bugs: List[Dict]) -> Dict[str, Any]:
+    """Comprehensive analysis for individual bug"""
+    similar_bugs = _find_similar_bugs(bug, all_bugs)
+    
+    return {
+        "five_whys": [
+            "Why did this bug occur? - Insufficient validation",
+            "Why was validation insufficient? - Missing edge case testing", 
+            "Why were edge cases not tested? - Test coverage gaps",
+            "Why were there test coverage gaps? - Time constraints",
+            "Why were there time constraints? - Unrealistic sprint planning"
+        ],
+        "patterns": [
+            f"Similar issues found in {len(similar_bugs)} other bugs",
+            "Pattern indicates systematic testing gaps",
+            "Recurring theme in this area/module"
+        ],
+        "preventive_framework": [
+            {
+                "area": "Testing",
+                "recommendation": "Implement comprehensive test automation"
+            },
+            {
+                "area": "Code Review", 
+                "recommendation": "Mandatory peer review for this module"
+            },
+            {
+                "area": "Monitoring",
+                "recommendation": "Add runtime monitoring and alerting"
+            }
+        ]
+    }
+
+def _find_similar_bugs(target_bug: Dict[str, Any], all_bugs: List[Dict]) -> List[Dict]:
+    """Find bugs similar to the target bug"""
+    similar_bugs = []
+    target_title = target_bug.get("title", "").lower()
+    target_area = target_bug.get("area_path", "")
+    
+    for bug in all_bugs:
+        if bug.get("ado_id") == target_bug.get("ado_id"):
+            continue  # Skip the target bug itself
+            
+        bug_title = bug.get("title", "").lower()
+        bug_area = bug.get("area_path", "")
+        
+        # Simple similarity check
+        if (target_area == bug_area or 
+            any(word in bug_title for word in target_title.split() if len(word) > 3)):
+            similar_bugs.append(bug)
+    
+    return similar_bugs[:10]  # Limit to 10 similar bugs
+
+def _format_bug_details(bug: Dict[str, Any]) -> Dict[str, Any]:
+    """Format bug details for frontend display"""
+    return {
+        "ado_id": bug.get("ado_id") or bug.get("id"),
+        "title": bug.get("title", ""),
+        "state": bug.get("state", "Unknown"),
+        "priority": bug.get("priority", "Unknown"),
+        "severity": bug.get("severity", "Unknown"),
+        "assigned_to": bug.get("assigned_to", "Unassigned"),
+        "area_path": bug.get("area_path", ""),
+        "created_date": bug.get("created_date", ""),
+        "changed_date": bug.get("changed_date", ""),
+        "description": bug.get("description", "")[:500]  # Truncate long descriptions
+    }

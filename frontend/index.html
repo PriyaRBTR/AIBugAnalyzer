@@ -1246,24 +1246,28 @@
             );
         };
 
-        // Root Cause Analysis Tab
+        // Root Cause Analysis Tab - Enhanced with Bug ID Input
         const RootCauseAnalysisTab = ({ selectedProject, selectedArea }) => {
             const [analysis, setAnalysis] = useState(null);
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
             const [analysisDepth, setAnalysisDepth] = useState('standard');
+            const [bugId, setBugId] = useState('');
+            const [bugDetails, setBugDetails] = useState(null);
 
-            const loadRootCauseAnalysis = async () => {
+            const loadRootCauseAnalysis = async (useBugId = '') => {
                 if (!selectedProject) return;
                 
                 setLoading(true);
                 setError(null);
+                setBugDetails(null);
                 
                 try {
                     const analysisPayload = {
                         project_name: selectedProject,
                         area_path: selectedArea,
-                        analysis_depth: analysisDepth
+                        analysis_depth: analysisDepth,
+                        bug_id: useBugId || bugId
                     };
                     
                     const response = await apiCall('/analytics/root-cause-analysis', {
@@ -1273,6 +1277,11 @@
                     
                     if (response.success) {
                         setAnalysis(response.analysis);
+                        if (response.bug_details) {
+                            setBugDetails(response.bug_details);
+                        }
+                    } else {
+                        setError(response.message || 'Failed to load root cause analysis');
                     }
                 } catch (err) {
                     setError('Failed to load root cause analysis: ' + err.message);
@@ -1281,9 +1290,146 @@
                 }
             };
 
+            const handleBugIdAnalysis = () => {
+                if (!bugId.trim()) {
+                    setError('Please enter a valid Bug ID');
+                    return;
+                }
+                loadRootCauseAnalysis(bugId);
+            };
+
+            // Create meaningful charts for individual bugs
+            const createBugCategoryChart = (canvasId, categoryData, bugTitle) => {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (!categoryData || Object.keys(categoryData).length === 0) {
+                    ctx.fillStyle = '#6b7280';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No category data available', canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+                
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(centerX, centerY) - 30;
+                
+                let currentAngle = 0;
+                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+                
+                Object.entries(categoryData).forEach(([category, confidence], index) => {
+                    const sliceAngle = (confidence / 100) * 2 * Math.PI;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                    ctx.closePath();
+                    ctx.fillStyle = colors[index % colors.length];
+                    ctx.fill();
+                    
+                    // Add percentage label
+                    const labelAngle = currentAngle + sliceAngle / 2;
+                    const labelX = centerX + Math.cos(labelAngle) * (radius * 0.7);
+                    const labelY = centerY + Math.sin(labelAngle) * (radius * 0.7);
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${confidence}%`, labelX, labelY);
+                    
+                    currentAngle += sliceAngle;
+                });
+            };
+
+            const createTimelineChart = (canvasId, timelineData) => {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                if (!timelineData || timelineData.length === 0) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeText('No timeline data available', canvas.width / 2, canvas.height / 2);
+                    ctx.fillText('No timeline data available', canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+                
+                const stepWidth = (canvas.width - 60) / Math.max(timelineData.length - 1, 1);
+                const y = canvas.height / 2;
+                
+                // Draw timeline line with better visibility
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(30, y);
+                ctx.lineTo(canvas.width - 30, y);
+                ctx.stroke();
+                
+                // Draw timeline points and labels with high visibility
+                timelineData.forEach((point, index) => {
+                    const x = 30 + (index * stepWidth);
+                    
+                    // Draw circle with border for better visibility
+                    ctx.beginPath();
+                    ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                    ctx.fillStyle = index === timelineData.length - 1 ? '#10B981' : '#3B82F6';
+                    ctx.fill();
+                    
+                    // Add white border to circle
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Draw state label with high contrast and outline
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(point.state || 'Unknown', x, y - 25);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(point.state || 'Unknown', x, y - 25);
+                    
+                    // Draw date label with high contrast and outline
+                    if (point.date) {
+                        ctx.font = 'bold 10px Arial';
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 2;
+                        ctx.strokeText(point.date, x, y + 30);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillText(point.date, x, y + 30);
+                    }
+                });
+            };
+
             useEffect(() => {
-                loadRootCauseAnalysis();
-            }, [selectedProject, selectedArea, analysisDepth]);
+                if (analysis && bugDetails) {
+                    setTimeout(() => {
+                        // Create charts for individual bug analysis
+                        if (analysis.category_breakdown) {
+                            createBugCategoryChart('bugCategoryChart', analysis.category_breakdown, bugDetails.title);
+                        }
+                        if (analysis.timeline_data) {
+                            createTimelineChart('bugTimelineChart', analysis.timeline_data);
+                        }
+                    }, 100);
+                }
+            }, [analysis, bugDetails]);
+
+            // Clear error and analysis states when project or area changes
+            useEffect(() => {
+                setError(null);
+                setAnalysis(null);
+                setBugDetails(null);
+            }, [selectedProject, selectedArea]);
 
             if (!selectedProject) {
                 return (
@@ -1293,74 +1439,398 @@
                 );
             }
 
-            if (loading) return <LoadingSpinner />;
-            if (error) return (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                    <span>{error}</span>
-                </div>
-            );
-
             return (
                 <div className="space-y-6">
-                    <div className="bg-white p-4 rounded-lg shadow">
-                        <div className="flex items-center gap-4">
-                            <label className="text-sm font-medium text-gray-700">Analysis Depth:</label>
-                            <select
-                                value={analysisDepth}
-                                onChange={(e) => setAnalysisDepth(e.target.value)}
-                                className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="standard">Standard</option>
-                                <option value="detailed">Detailed</option>
-                                <option value="comprehensive">Comprehensive</option>
-                            </select>
+                    {/* Error Message */}
+                    {error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    {/* Loading Spinner */}
+                    {loading && <LoadingSpinner />}
+
+                    {/* Bug ID Input Section */}
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-4">🔬 Root Cause Analysis - Bug ID Input</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Bug ID <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={bugId}
+                                    onChange={(e) => setBugId(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Enter Bug ID (e.g., 12345)"
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Analysis Depth</label>
+                                <select
+                                    value={analysisDepth}
+                                    onChange={(e) => setAnalysisDepth(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="standard">Standard Analysis</option>
+                                    <option value="detailed">Detailed Analysis</option>
+                                    <option value="comprehensive">Comprehensive Analysis</option>
+                                </select>
+                            </div>
+                            
+                            <div className="flex items-end">
+                                <button
+                                    onClick={handleBugIdAnalysis}
+                                    disabled={!bugId.trim() || loading}
+                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? 'Analyzing...' : 'Analyze Bug'}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    {analysis && (
-                        <div className="space-y-6">
-                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <h3 className="text-lg font-semibold text-blue-900 mb-2">🔬 Analysis Summary</h3>
-                                <p className="text-blue-800">
-                                    Analyzed {analysis.total_bugs_analyzed} bugs with {analysis.recommendations?.length || 0} recommendations
-                                </p>
-                            </div>
-
-                            {analysis.recommendations && analysis.recommendations.length > 0 && (
-                                <div className="bg-white p-6 rounded-lg shadow">
-                                    <h3 className="text-xl font-semibold text-gray-900 mb-4">AI Recommendations</h3>
-                                    <div className="space-y-3">
-                                        {analysis.recommendations.map((rec, index) => (
-                                            <div key={index} className="bg-blue-50 p-4 rounded-lg">
-                                                <h4 className="font-semibold text-blue-900 mb-2">{rec.category}</h4>
-                                                <p className="text-sm text-blue-800 mb-2">
-                                                    <strong>Focus:</strong> {rec.focus}
-                                                </p>
-                                                <p className="text-sm text-blue-800">
-                                                    <strong>Action:</strong> {rec.action}
-                                                </p>
-                                            </div>
-                                        ))}
+                    {/* Bug Details Section */}
+                    {bugDetails && (
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-xl font-semibold mb-4" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>🐛 Bug Details</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <div className="mb-4">
+                                        <span className="text-sm font-medium" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>Bug ID:</span>
+                                        <div style={{
+                                            backgroundColor: '#2563eb !important', 
+                                            color: '#ffffff !important', 
+                                            fontWeight: '700 !important',
+                                            padding: '8px 16px',
+                                            borderRadius: '6px',
+                                            marginTop: '4px',
+                                            display: 'inline-block',
+                                            minHeight: '40px',
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}>#{bugDetails.ado_id || bugDetails.id}</div>
                                     </div>
+                                    <div className="mb-4">
+                                        <span className="text-sm font-medium" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>Title:</span>
+                                        <div style={{color: '#ffffff !important', fontWeight: '500 !important', marginTop: '4px'}}>
+                                            {bugDetails.title}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="mb-4">
+                                        <span className="text-sm font-medium" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>Category:</span>
+                                        <div style={{
+                                            backgroundColor: '#16a34a !important', 
+                                            color: '#ffffff !important', 
+                                            fontWeight: '700 !important',
+                                            padding: '8px 16px',
+                                            borderRadius: '6px',
+                                            marginTop: '4px',
+                                            display: 'inline-block',
+                                            minHeight: '40px',
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}>{analysis?.primary_category || 'Analyzing...'}</div>
+                                    </div>
+                                    <div className="mb-4">
+                                        <span className="text-sm font-medium" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>State:</span>
+                                        <span style={{color: '#ffffff !important', fontWeight: '500 !important', marginLeft: '8px'}}>
+                                            {bugDetails.state} | Priority: {bugDetails.priority} | Assigned: {bugDetails.assigned_to || 'Unassigned'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Analysis Results */}
+                    {analysis && !error && (
+                        <div className="space-y-6">
+                            {/* Root Cause Categories Chart */}
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-xl font-semibold mb-4" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>
+                                    📊 Root Cause Categories
+                                </h3>
+                                <p className="text-sm mb-4" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                    {bugDetails ? `Shows the breakdown of root cause categories for Bug #${bugDetails.ado_id || bugDetails.id}` : 'Shows the breakdown across the selected dataset'}
+                                </p>
+                                <canvas id="bugCategoryChart" width="300" height="200" className="mx-auto"></canvas>
+                                
+                                {/* Category Breakdown Legend */}
+                                {analysis && analysis.category_breakdown && (
+                                    <div className="mt-4">
+                                        <h4 className="font-medium mb-2" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>Category Breakdown:</h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {Object.entries(analysis.category_breakdown).map(([category, confidence], index) => {
+                                                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
+                                                return (
+                                                    <div key={category} className="flex items-center">
+                                                        <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: colors[index % colors.length]}}></div>
+                                                        <span className="text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                            {category}: {confidence}%
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {!analysis && (
+                                    <div className="text-center py-4">
+                                        <p style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                            No category data available. Please analyze a Bug ID first.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Bug Timeline Chart - Only show for Detailed and Comprehensive */}
+                            {(analysisDepth === 'detailed' || analysisDepth === 'comprehensive') && (
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <h3 className="text-xl font-semibold mb-4" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>
+                                        📅 Bug Timeline
+                                    </h3>
+                                    <p className="text-sm mb-4" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                        {bugDetails ? `Timeline progression for Bug #${bugDetails.ado_id || bugDetails.id}` : 'Timeline analysis for bugs'}
+                                    </p>
+                                    <canvas id="bugTimelineChart" width="400" height="150" className="mx-auto"></canvas>
                                 </div>
                             )}
 
-                            {analysis.categories && (
+                            {/* AI Analysis Results */}
+                            {analysis && (
                                 <div className="bg-white p-6 rounded-lg shadow">
-                                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Bug Categories</h3>
-                                    <div className="space-y-3">
-                                        {Object.entries(analysis.categories).map(([category, bugs]) => {
-                                            if (!bugs || bugs.length === 0) return null;
-                                            return (
-                                                <div key={category} className="bg-gray-50 p-3 rounded">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="font-medium">{category}</span>
-                                                        <span className="text-sm text-gray-600">{bugs.length} bugs</span>
-                                                    </div>
+                                    <h3 className="text-xl font-semibold mb-4" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>
+                                        🤖 AI Analysis Results
+                                    </h3>
+                                    
+                                    {/* Standard Analysis Results */}
+                                    {analysisDepth === 'standard' && (
+                                        <div className="space-y-4">
+                                            <div>
+                                                <h4 className="font-semibold mb-2" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>Root Cause Category:</h4>
+                                                <p style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                    {analysis.primary_category || 'Category analysis pending...'}
+                                                </p>
+                                            </div>
+                                            
+                                            <div>
+                                                <h4 className="font-semibold mb-2" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>Immediate Recommendations:</h4>
+                                                <div className="space-y-2">
+                                                    {analysis.recommendations && analysis.recommendations.length > 0 ? (
+                                                        analysis.recommendations.map((rec, index) => (
+                                                            <div key={index} className="bg-blue-50 p-3 rounded">
+                                                                <p style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                                    • {rec.action || rec}
+                                                                </p>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <p style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                            Recommendations will be generated based on the bug analysis.
+                                                        </p>
+                                                    )}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Detailed Analysis Results */}
+                                    {analysisDepth === 'detailed' && (
+                                        <div className="space-y-4">
+                                            <div className="bg-blue-900 p-4 rounded-lg border-2 border-blue-400">
+                                                <h4 className="font-bold mb-3 text-xl" style={{color: '#ffffff !important', fontWeight: '800 !important', textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>Contributing Factors:</h4>
+                                                {analysis.contributing_factors ? (
+                                                    <div className="space-y-2">
+                                                        {analysis.contributing_factors.map((factor, index) => (
+                                                            <div key={index} className="bg-blue-800 p-3 rounded border border-blue-300" style={{
+                                                                backgroundColor: '#1e3a8a !important',
+                                                                border: '2px solid #60a5fa !important'
+                                                            }}>
+                                                                <span style={{
+                                                                    color: '#ffffff !important', 
+                                                                    fontWeight: '700 !important',
+                                                                    fontSize: '16px !important',
+                                                                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                                                                    display: 'block',
+                                                                    lineHeight: '1.5'
+                                                                }}>
+                                                                    • {factor}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-blue-800 p-3 rounded border-2 border-blue-300">
+                                                        <span style={{
+                                                            color: '#ffffff !important', 
+                                                            fontWeight: '700 !important',
+                                                            fontSize: '16px !important',
+                                                            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                                                        }}>
+                                                            Contributing factors analysis will be provided after bug analysis.
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="bg-green-900 p-4 rounded-lg border-2 border-green-400">
+                                                <h4 className="font-bold mb-3 text-xl" style={{color: '#ffffff !important', fontWeight: '800 !important', textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>Prevention Measures:</h4>
+                                                {analysis.prevention_measures ? (
+                                                    <div className="space-y-2">
+                                                        {analysis.prevention_measures.map((measure, index) => (
+                                                            <div key={index} className="bg-green-800 p-3 rounded border border-green-300" style={{
+                                                                backgroundColor: '#166534 !important',
+                                                                border: '2px solid #4ade80 !important'
+                                                            }}>
+                                                                <span style={{
+                                                                    color: '#ffffff !important', 
+                                                                    fontWeight: '700 !important',
+                                                                    fontSize: '16px !important',
+                                                                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                                                                    display: 'block',
+                                                                    lineHeight: '1.5'
+                                                                }}>
+                                                                    • {measure}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-green-800 p-3 rounded border-2 border-green-300">
+                                                        <span style={{
+                                                            color: '#ffffff !important', 
+                                                            fontWeight: '700 !important',
+                                                            fontSize: '16px !important',
+                                                            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                                                        }}>
+                                                            Prevention measures will be suggested based on the root cause analysis.
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Comprehensive Analysis Results */}
+                                    {analysisDepth === 'comprehensive' && (
+                                        <div className="space-y-6">
+                                            <div className="bg-purple-900 p-4 rounded-lg border-2 border-purple-400">
+                                                <h4 className="font-bold mb-4 text-xl" style={{color: '#ffffff !important', fontWeight: '800 !important', textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>5-Whys Analysis:</h4>
+                                                {analysis.five_whys ? (
+                                                    <div className="space-y-3">
+                                                        {analysis.five_whys.map((why, index) => (
+                                                            <div key={index} className="bg-purple-800 p-4 rounded-lg border border-purple-300" style={{
+                                                                backgroundColor: '#6b21a8 !important',
+                                                                border: '2px solid #c084fc !important'
+                                                            }}>
+                                                                <span style={{
+                                                                    color: '#ffffff !important', 
+                                                                    fontWeight: '700 !important',
+                                                                    fontSize: '16px !important',
+                                                                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                                                                    display: 'block',
+                                                                    lineHeight: '1.5'
+                                                                }}>
+                                                                    <strong style={{color: '#ffffff !important', fontWeight: '800 !important'}}>Why {index + 1}:</strong> {why}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-purple-800 p-3 rounded border-2 border-purple-300">
+                                                        <span style={{
+                                                            color: '#ffffff !important', 
+                                                            fontWeight: '700 !important',
+                                                            fontSize: '16px !important',
+                                                            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                                                        }}>
+                                                            5-Whys analysis will be conducted to identify the root cause chain.
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="bg-teal-900 p-4 rounded-lg border-2 border-teal-400">
+                                                <h4 className="font-bold mb-4 text-xl" style={{color: '#ffffff !important', fontWeight: '800 !important', textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>Pattern Detection:</h4>
+                                                {analysis.patterns ? (
+                                                    <div className="space-y-3">
+                                                        {analysis.patterns.map((pattern, index) => (
+                                                            <div key={index} className="bg-teal-800 p-4 rounded-lg border border-teal-300" style={{
+                                                                backgroundColor: '#115e59 !important',
+                                                                border: '2px solid #5eead4 !important'
+                                                            }}>
+                                                                <span style={{
+                                                                    color: '#ffffff !important', 
+                                                                    fontWeight: '700 !important',
+                                                                    fontSize: '16px !important',
+                                                                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                                                                    display: 'block',
+                                                                    lineHeight: '1.5'
+                                                                }}>
+                                                                    {pattern}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-teal-800 p-3 rounded border-2 border-teal-300">
+                                                        <span style={{
+                                                            color: '#ffffff !important', 
+                                                            fontWeight: '700 !important',
+                                                            fontSize: '16px !important',
+                                                            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                                                        }}>
+                                                            Pattern analysis will identify recurring issues and trends.
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            <div className="bg-orange-900 p-4 rounded-lg border-2 border-orange-400">
+                                                <h4 className="font-bold mb-4 text-xl" style={{color: '#ffffff !important', fontWeight: '800 !important', textShadow: '2px 2px 4px rgba(0,0,0,0.5)'}}>Preventive Framework:</h4>
+                                                {analysis.preventive_framework ? (
+                                                    <div className="space-y-3">
+                                                        {analysis.preventive_framework.map((framework, index) => (
+                                                            <div key={index} className="bg-orange-800 p-4 rounded-lg border border-orange-300" style={{
+                                                                backgroundColor: '#9a3412 !important',
+                                                                border: '2px solid #fdba74 !important'
+                                                            }}>
+                                                                <span style={{
+                                                                    color: '#ffffff !important', 
+                                                                    fontWeight: '700 !important',
+                                                                    fontSize: '16px !important',
+                                                                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                                                                    display: 'block',
+                                                                    lineHeight: '1.5'
+                                                                }}>
+                                                                    <strong style={{color: '#ffffff !important', fontWeight: '800 !important'}}>{framework.area}:</strong> {framework.recommendation}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-orange-800 p-3 rounded border-2 border-orange-300">
+                                                        <span style={{
+                                                            color: '#ffffff !important', 
+                                                            fontWeight: '700 !important',
+                                                            fontSize: '16px !important',
+                                                            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                                                        }}>
+                                                            A comprehensive preventive framework will be developed.
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
