@@ -2060,7 +2060,7 @@
                                 <div className="mt-4 space-y-2">
                                     {Object.entries(stats.state_distribution).map(([state, count], index) => (
                                         <div key={state} className="flex justify-between text-sm">
-                                            <span className="flex items-center">
+                                            <span className="flex items-center" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>
                                                 <div className={`w-3 h-3 rounded mr-2 ${
                                                     index === 0 ? 'bg-blue-500' : 
                                                     index === 1 ? 'bg-green-500' : 
@@ -2069,7 +2069,7 @@
                                                 }`}></div>
                                                 {state}
                                             </span>
-                                            <span className="font-semibold">{count}</span>
+                                            <span className="font-semibold" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>{count}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -2084,7 +2084,7 @@
                                 <div className="mt-4 space-y-2">
                                     {Object.entries(stats.priority_distribution).map(([priority, count], index) => (
                                         <div key={priority} className="flex justify-between text-sm">
-                                            <span className="flex items-center">
+                                            <span className="flex items-center" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>
                                                 <div className={`w-3 h-3 rounded mr-2 ${
                                                     index === 0 ? 'bg-blue-500' : 
                                                     index === 1 ? 'bg-green-500' : 
@@ -2092,7 +2092,7 @@
                                                 }`}></div>
                                                 P{priority}
                                             </span>
-                                            <span className="font-semibold">{count}</span>
+                                            <span className="font-semibold" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>{count}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -2104,7 +2104,7 @@
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Severity Analysis</h3>
                             <canvas id="severityChart" width="250" height="200" className="mx-auto"></canvas>
                             <div className="mt-4 text-center">
-                                <div className="text-sm text-gray-600">Distribution by severity level</div>
+                                <div className="text-sm" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>Distribution by severity level</div>
                             </div>
                         </div>
                     </div>
