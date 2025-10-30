@@ -862,6 +862,61 @@
             }
         };
 
+        // ==================================================================================
+        // AZURE DEVOPS ORGANIZATION CONFIGURATION
+        // ==================================================================================
+        // Configured to use TR-Legal-Cobalt organization from .env file
+        // ADO_ORG_URL=https://dev.azure.com/TR-Legal-Cobalt
+        // ==================================================================================
+        const ADO_ORGANIZATION = 'TR-Legal-Cobalt'; // Configured from .env ADO_ORG_URL
+        
+        // Utility function to generate ADO work item URL
+        const generateADOUrl = (workItemId, projectName, organizationName = null) => {
+            if (!workItemId || !projectName) return null;
+            
+            let organization = organizationName || ADO_ORGANIZATION;
+            
+            // If organization is still the placeholder, return null to prevent 401 errors
+            if (organization === 'your-actual-org-name') {
+                console.warn('ADO_ORGANIZATION not configured - bug links will be non-clickable to prevent 401 errors');
+                return null; // This will make links display as text instead of causing 401 errors
+            }
+            
+            // Try to get from URL parameters if available
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlOrg = urlParams.get('org');
+                if (urlOrg) organization = urlOrg;
+            } catch (e) {
+                // Continue with configured organization
+            }
+            
+            return `https://dev.azure.com/${organization}/${encodeURIComponent(projectName)}/_workitems/edit/${workItemId}`;
+        };
+
+        // Component for clickable bug link
+        const BugLink = ({ bugId, title, projectName, className = "bug-title text-lg" }) => {
+            const adoUrl = generateADOUrl(bugId, projectName);
+            
+            if (!adoUrl) {
+                // Fallback to non-clickable display if URL can't be generated
+                return React.createElement('span', { className }, `#${bugId} ${title}`);
+            }
+            
+            return React.createElement('a', {
+                href: adoUrl,
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                className: `${className} hover:text-blue-400 transition-colors duration-200`,
+                title: `Open Bug #${bugId} in Azure DevOps`,
+                style: {
+                    color: '#60a5fa !important',
+                    fontWeight: '700 !important',
+                    textDecoration: 'none'
+                }
+            }, `#${bugId} ${title}`);
+        };
+
         // Loading component
         const LoadingSpinner = () => (
             <div className="flex justify-center items-center p-4">
@@ -1041,9 +1096,12 @@
                                             <div key={bug.ado_id || index} className={`bug-card ${isDuplicate ? 'duplicate' : ''}`}>
                                                 <div className="mb-3">
                                                     <div className="flex items-start justify-between">
-                                                        <a href="#" className="bug-title text-lg">
-                                                            #{bug.ado_id} {bug.title}
-                                                        </a>
+                                                        <BugLink 
+                                                            bugId={bug.ado_id} 
+                                                            title={bug.title} 
+                                                            projectName={selectedProject}
+                                                            className="bug-title text-lg"
+                                                        />
                                                         {isDuplicate && (
                                                             <span className="duplicate-badge">POTENTIAL DUPLICATE</span>
                                                         )}
@@ -1185,7 +1243,7 @@
                                     <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-800" style={{backgroundColor: '#374151 !important'}}>
                                         <div className="flex justify-between items-start mb-3">
                                             <h4 className="text-lg font-medium" style={{color: '#60a5fa !important', fontWeight: '700 !important'}}>
-                                                #{duplicate.bug_id} - {duplicate.title}
+                                                #{duplicate.bug_id || duplicate.ado_id || duplicate.id || 'Unknown'} - {duplicate.title}
                                             </h4>
                                             <span className="px-3 py-1 rounded-full text-sm font-medium" style={{backgroundColor: '#3b82f6 !important', color: '#ffffff !important', fontWeight: '800 !important'}}>
                                                 {(() => {
