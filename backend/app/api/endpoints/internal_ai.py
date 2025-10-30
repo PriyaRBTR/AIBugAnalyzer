@@ -38,8 +38,8 @@ async def internal_ai_health_check():
             "use_internal_ai": True,
             "configuration": {
                 "esso_token_configured": bool(settings.esso_token),
-                "base_url_configured": bool(settings.open_arena_thomson_reuters_url),
-                "workflow_id_configured": bool(settings.ai_arena_workflow_id)
+                "base_url_configured": bool(settings.open_arena_base_url),
+                "workflow_id_configured": bool(settings.open_arena_workflow_id)
             }
         }
         
@@ -87,13 +87,13 @@ async def get_internal_ai_configuration():
         "use_internal_ai": settings.use_internal_ai,
         "configuration": {
             "esso_token_configured": bool(settings.esso_token),
-            "base_url_configured": bool(settings.open_arena_thomson_reuters_url),
-            "workflow_id_configured": bool(settings.ai_arena_workflow_id),
+            "base_url_configured": bool(settings.open_arena_base_url),
+            "workflow_id_configured": bool(settings.open_arena_workflow_id),
             "timeout": settings.ai_service_timeout,
             "max_retries": settings.ai_max_retries
         },
         "endpoints": {
-            "base_url": settings.open_arena_thomson_reuters_url if settings.open_arena_thomson_reuters_url else "Not configured"
+            "base_url": settings.open_arena_base_url if settings.open_arena_base_url else "Not configured"
         }
     }
 
@@ -319,8 +319,16 @@ async def _generate_fallback_response(query: str, context: str, project_name: st
     query_lower = query.lower()
     
     # Enhanced intelligent responses for ADO-specific scenarios
-    if any(word in query_lower for word in ['create', 'creating', 'new bug', 'add bug', 'submit']):
-        response = f"""To create a bug in Azure DevOps:
+    if any(word in query_lower for word in ['create', 'creating', 'new bug', 'add bug', 'submit', 'log', 'logging', 'report', 'reporting']):
+        response = f"""**How to Log/Create a Bug in Azure DevOps:**
+
+## Quick Steps:
+1. **Navigate to Boards** → **Work Items** → **New Work Item** → **Bug**
+2. **Fill required fields** (Title, Description, Steps to Reproduce)
+3. **Set Priority/Severity** based on impact
+4. **Save** to create the bug
+
+## Detailed Process:
 
 **Step-by-Step Process:**
 
