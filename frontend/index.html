@@ -1283,13 +1283,27 @@
                                             </span>
                                         </div>
                                         <div className="mb-3" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
-                                            {duplicate.description && duplicate.description.includes('<') ? (
-                                                <div dangerouslySetInnerHTML={{ __html: duplicate.description }} style={{color: '#ffffff !important'}} />
-                                            ) : (
-                                                <span style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
-                                                    {duplicate.description || 'No description available'}
-                                                </span>
-                                            )}
+                                            {(() => {
+                                                // Try different possible field names for description
+                                                const description = duplicate.description || duplicate.details || duplicate.summary || duplicate.body || duplicate.content || duplicate.text || '';
+                                                
+                                                if (description && description.includes('<')) {
+                                                    return <div dangerouslySetInnerHTML={{ __html: description }} style={{color: '#ffffff !important'}} />;
+                                                } else if (description && description.trim()) {
+                                                    return (
+                                                        <span style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                            {description}
+                                                        </span>
+                                                    );
+                                                } else {
+                                                    // If no description fields available, show the title as description
+                                                    return (
+                                                        <span style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                            {duplicate.title || 'No description available'}
+                                                        </span>
+                                                    );
+                                                }
+                                            })()}
                                         </div>
                                         <div className="text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
                                             <span className="font-medium" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>Reasoning:</span> 
