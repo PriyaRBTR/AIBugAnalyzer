@@ -930,6 +930,8 @@
             const [dashboardData, setDashboardData] = useState(null);
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState(null);
+            const [currentPage, setCurrentPage] = useState(1);
+            const [itemsPerPage] = useState(10);
 
             const loadDashboardData = async () => {
                 if (!selectedProject) return;
@@ -1029,6 +1031,14 @@
             const stats = dashboardData.statistics;
             const bugs = dashboardData.bugs || [];
             const duplicateBugs = identifyDuplicates(bugs);
+            
+            // Pagination calculations
+            const totalPages = Math.ceil(bugs.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentBugs = bugs.slice(startIndex, endIndex);
+            const showingStart = bugs.length === 0 ? 0 : startIndex + 1;
+            const showingEnd = Math.min(endIndex, bugs.length);
 
             return (
                 <div className="space-y-6">
@@ -1078,19 +1088,44 @@
                     {/* Enhanced Bugs List with Duplicate Highlighting */}
                     <div className="bg-white rounded-lg border border-gray-200">
                         <div className="p-4 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                                Recent Bugs - {stats.total_bugs} Total 
-                                {duplicateBugs.size > 0 && (
-                                    <span className="ml-2 text-sm text-amber-600">
-                                        ({duplicateBugs.size} potential duplicates)
-                                    </span>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Recent Bugs - {stats.total_bugs} Total 
+                                    {duplicateBugs.size > 0 && (
+                                        <span className="ml-2 text-sm text-amber-600">
+                                            ({duplicateBugs.size} potential duplicates)
+                                        </span>
+                                    )}
+                                </h3>
+                                
+                                {/* Pagination Dropdown */}
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-sm text-gray-600" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>
+                                            Showing {showingStart}-{showingEnd} of {bugs.length} bugs
+                                        </div>
+                                        <select
+                                            value={currentPage}
+                                            onChange={(e) => setCurrentPage(parseInt(e.target.value))}
+                                            className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                        >
+                                            {[...Array(totalPages)].map((_, index) => {
+                                                const pageNum = index + 1;
+                                                return (
+                                                    <option key={pageNum} value={pageNum}>
+                                                        Page {pageNum}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                    </div>
                                 )}
-                            </h3>
+                            </div>
                         </div>
                         <div className="p-4">
                             {bugs.length > 0 ? (
                                 <div className="space-y-4">
-                                    {bugs.slice(0, 10).map((bug, index) => {
+                                    {currentBugs.map((bug, index) => {
                                         const isDuplicate = duplicateBugs.has(bug.ado_id);
                                         return (
                                             <div key={bug.ado_id || index} className={`bug-card ${isDuplicate ? 'duplicate' : ''}`}>
