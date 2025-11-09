@@ -187,24 +187,78 @@ class MCPAdoService:
                 batch_ids = work_item_ids[i:i + batch_size]
                 ids_param = ",".join(batch_ids)
                 
-                # Fetch detailed work item data for this batch
+                logger.info(f"Processing batch {i//batch_size + 1}: IDs {', '.join(batch_ids)}")
+                
+                # Always try individual requests for better reliability when dealing with small numbers of bugs
+                if len(batch_ids) <= 10:  # For small batches, use individual requests for better error handling
+                    logger.info(f"Using individual requests for small batch {i//batch_size + 1} ({len(batch_ids)} items)")
+                    for individual_id in batch_ids:
+                        try:
+                            individual_endpoint = f"/_apis/wit/workitems/{individual_id}?$expand=Fields&api-version=7.1"
+                            individual_response = await self.call_ado_api(individual_endpoint)
+                            if individual_response and not individual_response.get("success") == False and "fields" in individual_response:
+                                all_work_item_details.append(individual_response)
+                                logger.info(f"Successfully fetched individual work item {individual_id}")
+                            else:
+                                logger.error(f"Failed to fetch individual work item {individual_id}: {individual_response.get('error', 'Invalid response format')}")
+                        except Exception as e:
+                            logger.error(f"Exception fetching individual work item {individual_id}: {str(e)}")
+                    continue
+                
+                # For larger batches, try batch request first
                 details_endpoint = f"/_apis/wit/workitems?ids={ids_param}&$expand=Fields&api-version=7.1"
                 details_response = await self.call_ado_api(details_endpoint)
                 
                 # Check if the batch call had an explicit error response
                 if details_response and details_response.get("success") == False:
-                    logger.warning(f"Azure DevOps API error for batch {i//batch_size + 1}: {details_response.get('error')}")
-                    continue  # Skip this batch but continue with others
+                    logger.error(f"Azure DevOps API error for batch {i//batch_size + 1} (IDs: {', '.join(batch_ids)}): {details_response.get('error')}")
+                    # Try individual requests for failed batch
+                    logger.info(f"Attempting individual requests for failed batch {i//batch_size + 1}")
+                    for individual_id in batch_ids:
+                        try:
+                            individual_endpoint = f"/_apis/wit/workitems/{individual_id}?$expand=Fields&api-version=7.1"
+                            individual_response = await self.call_ado_api(individual_endpoint)
+                            if individual_response and not individual_response.get("success") == False and "fields" in individual_response:
+                                all_work_item_details.append(individual_response)
+                                logger.info(f"Successfully fetched individual work item {individual_id}")
+                            else:
+                                logger.error(f"Failed to fetch individual work item {individual_id}: {individual_response.get('error', 'Invalid response format')}")
+                        except Exception as e:
+                            logger.error(f"Exception fetching individual work item {individual_id}: {str(e)}")
+                    continue
                 
                 # Check if we got valid data for this batch
                 if not details_response or "value" not in details_response:
-                    logger.warning(f"Invalid response from work items API for batch {i//batch_size + 1}")
-                    continue  # Skip this batch but continue with others
+                    logger.error(f"Invalid response from work items API for batch {i//batch_size + 1} (IDs: {', '.join(batch_ids)})")
+                    # Try individual requests for failed batch
+                    logger.info(f"Attempting individual requests for batch {i//batch_size + 1} due to invalid response")
+                    for individual_id in batch_ids:
+                        try:
+                            individual_endpoint = f"/_apis/wit/workitems/{individual_id}?$expand=Fields&api-version=7.1"
+                            individual_response = await self.call_ado_api(individual_endpoint)
+                            if individual_response and not individual_response.get("success") == False and "fields" in individual_response:
+                                all_work_item_details.append(individual_response)
+                                logger.info(f"Successfully fetched individual work item {individual_id}")
+                            else:
+                                logger.error(f"Failed to fetch individual work item {individual_id}: {individual_response.get('error', 'Invalid response format')}")
+                        except Exception as e:
+                            logger.error(f"Exception fetching individual work item {individual_id}: {str(e)}")
+                    continue
                 
                 # Add the successful batch results
                 batch_details = details_response.get("value", [])
                 all_work_item_details.extend(batch_details)
-                logger.info(f"Successfully fetched batch {i//batch_size + 1}: {len(batch_details)} work items")
+                logger.info(f"Successfully fetched batch {i//batch_size + 1}: {len(batch_details)} work items (IDs: {', '.join(batch_ids)})")
+            
+            # Enhanced logging for debugging missing bugs
+            fetched_ids = [str(item.get("id", "")) for item in all_work_item_details]
+            original_ids = [str(item["id"]) for item in work_items]
+            missing_ids = [id for id in original_ids if id not in fetched_ids]
+            
+            if missing_ids:
+                logger.warning(f"Missing work item IDs in final results: {', '.join(missing_ids)}")
+                logger.warning(f"Original WIQL returned {len(original_ids)} work items: {', '.join(original_ids)}")
+                logger.warning(f"Successfully fetched {len(fetched_ids)} work items: {', '.join(fetched_ids)}")
             
             # If we couldn't fetch any work item details at all
             if not all_work_item_details:
@@ -212,7 +266,11 @@ class MCPAdoService:
                     "success": False,
                     "error": "Failed to fetch any work item details from Azure DevOps API",
                     "bugs": [],
-                    "total_count": 0
+                    "total_count": 0,
+                    "debug_info": {
+                        "wiql_returned_count": len(work_items),
+                        "wiql_ids": [str(item["id"]) for item in work_items]
+                    }
                 }
             
             # Format bugs data

@@ -264,25 +264,33 @@ async def analyze_bug_patterns(
 async def get_bug_statistics(
     project_name: str = Query(..., description="Azure DevOps project name"),
     area_path: Optional[str] = Query(None, description="Area path filter"),
-    days_back: int = Query(190, description="Number of days for statistics based on last updated date"),
+    days_back: int = Query(None, description="Number of days for statistics (optional - if not provided, gets all bugs)"),
     mcp_service: MCPAdoService = Depends(get_mcp_ado_service)
 ) -> Dict[str, Any]:
     """
     Get comprehensive bug statistics for dashboard
-    Uses last updated date (ChangedDate) instead of created date for better filtering
+    Shows all bugs in real-time like ADO (no date filtering by default)
     """
-    logger.info(f"GET /stats - Getting statistics for project {project_name} (last {days_back} days by updated date)")
+    logger.info(f"GET /stats - Getting statistics for project {project_name} (real-time like ADO)")
     
     try:
-        # Fetch bugs for statistics using last updated date
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days_back)
+        # For real-time data like ADO, don't filter by date unless specifically requested
+        from_date = None
+        to_date = None
+        
+        if days_back:
+            # Only apply date filtering if explicitly requested
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days_back)
+            from_date = start_date.strftime("%Y-%m-%d")
+            to_date = end_date.strftime("%Y-%m-%d")
+            logger.info(f"Applying date filter: {from_date} to {to_date}")
         
         result = await mcp_service.fetch_bugs_live(
             project_name=project_name,
             area_path=area_path,
-            from_date=start_date.strftime("%Y-%m-%d"),
-            to_date=end_date.strftime("%Y-%m-%d"),
+            from_date=from_date,
+            to_date=to_date,
             limit=1000  # Increased limit for better analysis
         )
         
@@ -297,9 +305,10 @@ async def get_bug_statistics(
         logger.info(f"Retrieved {len(bugs)} bugs for statistics")
         
         # Calculate comprehensive statistics
+        period_description = f"Last {days_back} days (by update date)" if days_back else "All bugs (real-time like ADO)"
         stats = {
             "total_bugs": len(bugs),
-            "period": f"Last {days_back} days (by update date)",
+            "period": period_description,
             "state_distribution": {},
             "priority_distribution": {},
             "severity_distribution": {},
