@@ -862,6 +862,72 @@
             }
         };
 
+        // Utility function to clean HTML content from Azure DevOps comments
+        const cleanHtmlContent = (htmlContent) => {
+            if (!htmlContent) return 'No comment content available';
+            
+            console.log('Original HTML content:', htmlContent);
+            
+            // Create a temporary div to parse HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlContent;
+            
+            // Remove all @mentions completely
+            const mentions = tempDiv.querySelectorAll('a[data-vss-mention]');
+            mentions.forEach(mention => {
+                // Remove all mentions entirely
+                mention.outerHTML = '';
+            });
+            
+            // Handle line breaks
+            const breaks = tempDiv.querySelectorAll('br');
+            breaks.forEach(br => {
+                br.outerHTML = '\n';
+            });
+            
+            // Handle div elements (usually represent paragraphs)
+            const divs = tempDiv.querySelectorAll('div');
+            divs.forEach(div => {
+                div.outerHTML = div.innerHTML + '\n';
+            });
+            
+            // Remove all images completely
+            const images = tempDiv.querySelectorAll('img');
+            images.forEach(img => {
+                // Remove all images entirely
+                img.outerHTML = '';
+            });
+            
+            // Get clean text content
+            let cleanText = tempDiv.textContent || tempDiv.innerText || '';
+            
+            // Clean up extra whitespace and line breaks
+            cleanText = cleanText
+                .replace(/\n\s*\n\s*\n/g, '\n\n') // Replace multiple line breaks with double line break
+                .replace(/^\s+|\s+$/g, '') // Trim whitespace from start and end
+                .replace(/\s+/g, ' '); // Replace multiple spaces with single space
+            
+            // Final cleanup - remove any remaining GUID patterns that might have slipped through
+            let finalCleanText = cleanText.replace(/@[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}@[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '@User');
+            
+            // Remove the first 3 special characters if they exist (specifically targeting emoji-like characters)
+            if (finalCleanText.length >= 3) {
+                // Check if the first 3 characters are special/emoji characters
+                const first3Chars = finalCleanText.substring(0, 3);
+                // Enhanced regex to catch emoji and special Unicode characters
+                const containsSpecialChars = /[\u2600-\u26FF\u2700-\u27BF\uD83C-\uD83E]|[^\w\s@#$%^&*()[\]{};':",./<>?`~!-+=|\\]/.test(first3Chars);
+                
+                if (containsSpecialChars) {
+                    finalCleanText = finalCleanText.substring(3).trim();
+                    console.log('Removed first 3 special characters:', first3Chars);
+                }
+            }
+            
+            console.log('Cleaned text result:', finalCleanText);
+            
+            return finalCleanText || 'No readable content in comment';
+        };
+
         // ==================================================================================
         // AZURE DEVOPS ORGANIZATION CONFIGURATION
         // ==================================================================================
@@ -1369,6 +1435,8 @@
             const [analysisDepth, setAnalysisDepth] = useState('standard');
             const [bugId, setBugId] = useState('');
             const [bugDetails, setBugDetails] = useState(null);
+            const [includeComment, setIncludeComment] = useState(false);
+            const [commentData, setCommentData] = useState(null);
 
             const loadRootCauseAnalysis = async (useBugId = '') => {
                 if (!selectedProject) return;
@@ -1376,13 +1444,15 @@
                 setLoading(true);
                 setError(null);
                 setBugDetails(null);
+                setCommentData(null);
                 
                 try {
                     const analysisPayload = {
                         project_name: selectedProject,
                         area_path: selectedArea,
                         analysis_depth: analysisDepth,
-                        bug_id: useBugId || bugId
+                        bug_id: useBugId || bugId,
+                        include_comment: includeComment
                     };
                     
                     const response = await apiCall('/analytics/root-cause-analysis', {
@@ -1394,6 +1464,9 @@
                         setAnalysis(response.analysis);
                         if (response.bug_details) {
                             setBugDetails(response.bug_details);
+                        }
+                        if (response.comment_data) {
+                            setCommentData(response.comment_data);
                         }
                     } else {
                         setError(response.message || 'Failed to load root cause analysis');
@@ -1597,7 +1670,19 @@
                                 </select>
                             </div>
                             
-                            <div className="flex items-end">
+                            <div className="flex flex-col items-end justify-end">
+                                <div className="flex items-center mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="includeComment"
+                                        checked={includeComment}
+                                        onChange={(e) => setIncludeComment(e.target.checked)}
+                                        className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                    <label htmlFor="includeComment" className="text-sm font-medium" style={{color: '#ffffff !important', fontWeight: '600 !important'}}>
+                                        Include comment
+                                    </label>
+                                </div>
                                 <button
                                     onClick={handleBugIdAnalysis}
                                     disabled={!bugId.trim() || loading}
@@ -1661,6 +1746,101 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Bug Comments Section - Only show when comments are requested and available */}
+                    {includeComment && bugDetails && (
+                        <div className="bg-white p-6 rounded-lg shadow">
+                            <h3 className="text-xl font-semibold mb-4" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>💬 Bug Comments</h3>
+                            
+                            {commentData && commentData.comment_text ? (
+                                <div className="space-y-4">
+                                    {/* Comment Header */}
+                                    <div className="border-b border-gray-600 pb-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <div style={{
+                                                    backgroundColor: '#059669 !important', 
+                                                    color: '#ffffff !important', 
+                                                    fontWeight: '700 !important',
+                                                    padding: '6px 12px',
+                                                    borderRadius: '20px',
+                                                    fontSize: '12px'
+                                                }}>LATEST COMMENT</div>
+                                                {commentData.author && (
+                                                    <span style={{color: '#ffffff !important', fontWeight: '600 !important'}}>
+                                                        By: {commentData.author}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {commentData.created_date && (
+                                                <span className="text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                    {new Date(commentData.created_date).toLocaleDateString('en-US', {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Comment Content */}
+                                    <div className="bg-gray-800 p-4 rounded-lg border-2 border-blue-400" style={{
+                                        backgroundColor: '#1f2937 !important',
+                                        border: '2px solid #60a5fa !important'
+                                    }}>
+                                        <div className="ai-response" style={{
+                                            color: '#ffffff !important',
+                                            fontWeight: '500 !important',
+                                            whiteSpace: 'pre-wrap',
+                                            wordWrap: 'break-word',
+                                            overflowWrap: 'break-word',
+                                            lineHeight: '1.6',
+                                            fontSize: '14px'
+                                        }}>
+                                            {cleanHtmlContent(commentData.comment_text)}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Comment Status */}
+                                    {commentData.status && (
+                                        <div className="text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                            <span className="font-medium">Status Context: </span>
+                                            <span style={{
+                                                backgroundColor: commentData.status === 'open' ? '#f59e0b !important' :
+                                                                 commentData.status === 'closed' ? '#10b981 !important' :
+                                                                 commentData.status === 'resolved' ? '#8b5cf6 !important' :
+                                                                 '#3b82f6 !important',
+                                                color: '#ffffff !important',
+                                                fontWeight: '600 !important',
+                                                padding: '2px 8px',
+                                                borderRadius: '4px'
+                                            }}>
+                                                {commentData.status.toUpperCase()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="text-center py-6">
+                                    <div className="bg-yellow-900 p-4 rounded-lg border-2 border-yellow-400">
+                                        <span style={{
+                                            color: '#ffffff !important', 
+                                            fontWeight: '600 !important',
+                                            fontSize: '16px'
+                                        }}>
+                                            📝 No comments available for this bug
+                                        </span>
+                                        <p className="mt-2 text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                            This bug either has no comments or the latest comment could not be retrieved.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
