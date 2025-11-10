@@ -872,6 +872,13 @@
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = htmlContent;
             
+            // Check for images/attachments BEFORE removing them
+            const images = tempDiv.querySelectorAll('img');
+            const hasImages = images.length > 0;
+            const imageCount = images.length;
+            
+            console.log(`Found ${imageCount} images in comment`);
+            
             // Remove all @mentions completely
             const mentions = tempDiv.querySelectorAll('a[data-vss-mention]');
             mentions.forEach(mention => {
@@ -891,10 +898,9 @@
                 div.outerHTML = div.innerHTML + '\n';
             });
             
-            // Remove all images completely
-            const images = tempDiv.querySelectorAll('img');
+            // Remove all images but keep track that they existed
             images.forEach(img => {
-                // Remove all images entirely
+                // Remove all images entirely (but we already recorded they exist)
                 img.outerHTML = '';
             });
             
@@ -923,9 +929,48 @@
                 }
             }
             
-            console.log('Cleaned text result:', finalCleanText);
+            // Now handle the combination of text and images intelligently
+            const hasmeaningfulText = finalCleanText && finalCleanText.trim().length > 0 && 
+                                     !finalCleanText.toLowerCase().includes('refer screenshot') &&
+                                     finalCleanText.trim() !== '📝' && 
+                                     finalCleanText.trim() !== '🔗' &&
+                                     finalCleanText.trim().length > 5; // Ensure it's not just artifacts
             
-            return finalCleanText || 'No readable content in comment';
+            console.log('Has meaningful text:', hasmeaningfulText);
+            console.log('Has images:', hasImages);
+            console.log('Final cleaned text:', finalCleanText);
+            
+            let result = '';
+            
+            if (hasImages && hasmeaningfulText) {
+                // Both text and images - show both
+                result = finalCleanText;
+                if (imageCount === 1) {
+                    result += '\n\n📷 [Screenshot attached - please refer to the attached image for visual details]';
+                } else {
+                    result += `\n\n📷 [${imageCount} screenshots attached - please refer to the attached images for visual details]`;
+                }
+                console.log('Combined text and image reference');
+            } else if (hasImages && !hasmeaningfulText) {
+                // Only images, no meaningful text
+                if (imageCount === 1) {
+                    result = '📷 Please refer to the attached screenshot for details.';
+                } else {
+                    result = `📷 Please refer to the ${imageCount} attached screenshots for details.`;
+                }
+                console.log('Only image reference');
+            } else if (hasmeaningfulText && !hasImages) {
+                // Only text, no images
+                result = finalCleanText;
+                console.log('Only text content');
+            } else {
+                // Neither meaningful text nor images
+                result = 'No readable content in comment';
+                console.log('No meaningful content found');
+            }
+            
+            console.log('Final result:', result);
+            return result;
         };
 
         // ==================================================================================
@@ -1437,6 +1482,7 @@
             const [bugDetails, setBugDetails] = useState(null);
             const [includeComment, setIncludeComment] = useState(false);
             const [commentData, setCommentData] = useState(null);
+            const [analysisResponse, setAnalysisResponse] = useState(null);
 
             const loadRootCauseAnalysis = async (useBugId = '') => {
                 if (!selectedProject) return;
@@ -1749,14 +1795,139 @@
                         </div>
                     )}
 
-                    {/* Bug Comments Section - Only show when comments are requested and available */}
+                    {/* Bug Comments Section - Enhanced to show multiple important comments */}
                     {includeComment && bugDetails && (
                         <div className="bg-white p-6 rounded-lg shadow">
                             <h3 className="text-xl font-semibold mb-4" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>💬 Bug Comments</h3>
                             
-                            {commentData && commentData.comment_text ? (
+                            {/* Check for important_comments array first (new multi-comment system) */}
+                            {analysisResponse && analysisResponse.important_comments && analysisResponse.important_comments.length > 0 ? (
                                 <div className="space-y-4">
-                                    {/* Comment Header */}
+                                    {/* Multi-comment Header */}
+                                    <div className="border-b border-gray-600 pb-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <div style={{
+                                                    backgroundColor: '#059669 !important', 
+                                                    color: '#ffffff !important', 
+                                                    fontWeight: '700 !important',
+                                                    padding: '6px 12px',
+                                                    borderRadius: '20px',
+                                                    fontSize: '12px'
+                                                }}>
+                                                    {response.important_comments.length === 1 ? 'IMPORTANT COMMENT' : `${response.important_comments.length} IMPORTANT COMMENTS`}
+                                                </div>
+                                                {response.threshold_used && (
+                                                    <span style={{color: '#ffffff !important', fontWeight: '500 !important', fontSize: '12px'}}>
+                                                        Threshold: {response.threshold_used}+
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {response.total_comments && (
+                                                <span className="text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                    {response.comments_above_threshold || response.important_comments.length} of {response.total_comments} comments shown
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Multiple Important Comments */}
+                                    <div className="space-y-6">
+                                    {analysisResponse.important_comments.map((comment, index) => (
+                                            <div key={index} className={`p-4 rounded-lg border-2 ${
+                                                comment.is_primary ? 'border-green-400 bg-green-900' : 'border-blue-400 bg-gray-800'
+                                            }`} style={{
+                                                backgroundColor: comment.is_primary ? '#064e3b !important' : '#1f2937 !important',
+                                                border: comment.is_primary ? '2px solid #4ade80 !important' : '2px solid #60a5fa !important'
+                                            }}>
+                                                {/* Comment Header with Priority and Type */}
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center space-x-3">
+                                                        {comment.is_primary && (
+                                                            <div style={{
+                                                                backgroundColor: '#16a34a !important', 
+                                                                color: '#ffffff !important', 
+                                                                fontWeight: '800 !important',
+                                                                padding: '4px 8px',
+                                                                borderRadius: '12px',
+                                                                fontSize: '10px'
+                                                            }}>PRIMARY</div>
+                                                        )}
+                                                        <div style={{
+                                                            backgroundColor: comment.comment_type === 'Implementation Details' ? '#7c3aed !important' :
+                                                                             comment.comment_type === 'Technical Analysis' ? '#0369a1 !important' :
+                                                                             comment.comment_type === 'Investigation Notes' ? '#ea580c !important' :
+                                                                             comment.comment_type === 'Status Update' ? '#059669 !important' :
+                                                                             '#6b7280 !important',
+                                                            color: '#ffffff !important', 
+                                                            fontWeight: '700 !important',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '12px',
+                                                            fontSize: '11px'
+                                                        }}>
+                                                            {comment.comment_type || 'General Comment'}
+                                                        </div>
+                                                        <div style={{
+                                                            backgroundColor: '#dc2626 !important', 
+                                                            color: '#ffffff !important', 
+                                                            fontWeight: '700 !important',
+                                                            padding: '3px 8px',
+                                                            borderRadius: '10px',
+                                                            fontSize: '10px'
+                                                        }}>
+                                                            Score: {comment.importance_score || 0}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        {comment.author && (
+                                                            <div style={{color: '#ffffff !important', fontWeight: '600 !important', fontSize: '12px'}}>
+                                                                By: {comment.author}
+                                                            </div>
+                                                        )}
+                                                        {comment.created_date && (
+                                                            <div className="text-xs" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                                {new Date(comment.created_date).toLocaleDateString('en-US', {
+                                                                    year: 'numeric',
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Comment Content */}
+                                                <div className="ai-response" style={{
+                                                    color: '#ffffff !important',
+                                                    fontWeight: '500 !important',
+                                                    whiteSpace: 'pre-wrap',
+                                                    wordWrap: 'break-word',
+                                                    overflowWrap: 'break-word',
+                                                    lineHeight: '1.6',
+                                                    fontSize: '14px',
+                                                    padding: '8px 0'
+                                                }}>
+                                                    {cleanHtmlContent(comment.comment_text)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* Selection Criteria Information */}
+                                    {response.selection_criteria && (
+                                        <div className="mt-4 p-3 bg-blue-900 rounded-lg border border-blue-400">
+                                            <div className="text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
+                                                <span className="font-medium" style={{color: '#ffffff !important', fontWeight: '700 !important'}}>Selection Method: </span>
+                                                {response.selection_criteria}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : commentData && commentData.comment_text ? (
+                                /* Fallback: Single comment display for backward compatibility */
+                                <div className="space-y-4">
                                     <div className="border-b border-gray-600 pb-3">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-3">
@@ -1788,7 +1959,6 @@
                                         </div>
                                     </div>
                                     
-                                    {/* Comment Content */}
                                     <div className="bg-gray-800 p-4 rounded-lg border-2 border-blue-400" style={{
                                         backgroundColor: '#1f2937 !important',
                                         border: '2px solid #60a5fa !important'
@@ -1806,7 +1976,6 @@
                                         </div>
                                     </div>
                                     
-                                    {/* Comment Status */}
                                     {commentData.status && (
                                         <div className="text-sm" style={{color: '#ffffff !important', fontWeight: '500 !important'}}>
                                             <span className="font-medium">Status Context: </span>

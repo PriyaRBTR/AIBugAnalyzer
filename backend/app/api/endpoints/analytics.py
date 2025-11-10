@@ -927,43 +927,91 @@ async def _analyze_individual_bug(
             "success": True
         }
         
-        # Fetch comment if requested
+        # Fetch comment if requested (using enhanced multi-comment scoring)
         if include_comment and mcp_service:
             try:
-                logger.info(f"Fetching comment for bug {bug_id}")
-                comment_result = await mcp_service.get_bug_comments(project_name, int(bug_id))
+                logger.info(f"Fetching comments with enhanced multi-comment scoring for bug {bug_id}")
+                comment_result = await mcp_service.get_bug_comments_with_scoring(project_name, int(bug_id))
                 
                 if comment_result.get("success"):
-                    if comment_result.get("comment"):
-                        # Format comment data for frontend display
-                        comment_data = comment_result["comment"]
-                        response["comment_data"] = {
-                            "comment_text": comment_data.get("text", ""),
-                            "author": comment_data.get("created_by", "Unknown"),
-                            "created_date": comment_data.get("created_date", ""),
-                            "status": target_bug.get("state", "Unknown")  # Add current bug state for context
-                        }
-                        response["comment_status"] = "found"
-                        logger.info(f"Successfully fetched comment for bug {bug_id} from {comment_data.get('created_by', 'Unknown')}")
+                    # Handle multiple important comments
+                    important_comments = comment_result.get("important_comments", [])
+                    
+                    if important_comments:
+                        # Format important comments for frontend display
+                        response["important_comments"] = [
+                            {
+                                "comment_text": comment.get("text", ""),
+                                "author": comment.get("created_by", "Unknown"),
+                                "created_date": comment.get("created_date", ""),
+                                "comment_type": comment.get("comment_type", "General Comment"),
+                                "importance_score": comment.get("importance_score", 0),
+                                "is_primary": comment.get("is_primary", False),
+                                "display_priority": comment.get("display_priority", 1)
+                            }
+                            for comment in important_comments
+                        ]
+                        
+                        # Keep primary comment data for backward compatibility
+                        primary_comment = important_comments[0] if important_comments else None
+                        if primary_comment:
+                            response["comment_data"] = {
+                                "comment_text": primary_comment.get("text", ""),
+                                "author": primary_comment.get("created_by", "Unknown"),
+                                "created_date": primary_comment.get("created_date", ""),
+                                "comment_type": primary_comment.get("comment_type", "General Comment"),
+                                "importance_score": primary_comment.get("importance_score", 0),
+                                "status": target_bug.get("state", "Unknown")
+                            }
+                        
+                        # Add alternative comments if available
+                        if comment_result.get("alternative_comments"):
+                            response["alternative_comments"] = comment_result["alternative_comments"]
+                        
+                        # Add latest comment data if different from primary
+                        if comment_result.get("latest_comment_data"):
+                            latest_data = comment_result["latest_comment_data"]
+                            response["latest_comment_data"] = {
+                                "comment_text": latest_data.get("text", ""),
+                                "author": latest_data.get("created_by", "Unknown"),
+                                "created_date": latest_data.get("created_date", ""),
+                                "comment_type": latest_data.get("comment_type", "General Comment"),
+                                "importance_score": latest_data.get("importance_score", 0)
+                            }
+                        
+                        # Add enhanced selection criteria and statistics
+                        response["selection_criteria"] = comment_result.get("selection_criteria", "Enhanced multi-comment algorithm selection")
+                        response["total_comments"] = comment_result.get("total_comments", len(important_comments))
+                        response["comments_above_threshold"] = comment_result.get("comments_above_threshold", len(important_comments))
+                        response["threshold_used"] = comment_result.get("threshold_used", 15)
+                        response["comment_status"] = "found_multiple" if len(important_comments) > 1 else "found"
+                        
+                        logger.info(f"Enhanced multi-comment scoring found {len(important_comments)} important comments for bug {bug_id}")
                     else:
                         response["comment_status"] = "none"
-                        response["comment_message"] = comment_result.get("message", "No comments available for the selected bug")
-                        logger.info(f"No comments found for bug {bug_id}")
+                        response["comment_message"] = comment_result.get("selection_criteria", "No comments available for the selected bug")
+                        response["total_comments"] = comment_result.get("total_comments", 0)
+                        response["important_comments"] = []
+                        logger.info(f"No important comments found for bug {bug_id}")
                 else:
                     # API error - distinguish from no comments
                     response["comment_status"] = "error"
                     response["comment_error"] = comment_result.get("error", "Failed to fetch comments")
-                    logger.warning(f"Failed to fetch comments for bug {bug_id}: {comment_result.get('error')}")
+                    response["important_comments"] = []
+                    logger.warning(f"Failed to fetch enhanced comments for bug {bug_id}: {comment_result.get('error')}")
                     
             except Exception as comment_error:
-                logger.error(f"Exception while fetching comments for bug {bug_id}: {str(comment_error)}")
+                logger.error(f"Exception while fetching enhanced comments for bug {bug_id}: {str(comment_error)}")
                 response["comment_status"] = "error"
                 response["comment_error"] = f"Something went wrong while fetching comments: {str(comment_error)}"
+                response["important_comments"] = []
         elif include_comment and not mcp_service:
             response["comment_status"] = "error"
             response["comment_error"] = "Comment service not available"
+            response["important_comments"] = []
         else:
             response["comment_status"] = "not_requested"
+            response["important_comments"] = []
         
         return response
         

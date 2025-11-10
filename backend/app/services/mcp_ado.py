@@ -614,6 +614,369 @@ class MCPAdoService:
                 "comment": None
             }
     
+    async def get_bug_comments_with_scoring(self, project_name: str, bug_id: int, min_importance_score: int = 15) -> Dict[str, Any]:
+        """
+        Enhanced comment selection with intelligent scoring algorithm
+        Returns MULTIPLE important comments above the minimum threshold
+        Prioritizes technical implementation details over simple status updates
+        """
+        logger.info(f"Fetching discussion comments with enhanced scoring for bug {bug_id} in project {project_name} (min_score: {min_importance_score})")
+        
+        try:
+            project_encoded = quote(project_name)
+            
+            # Azure DevOps API endpoint for work item updates (includes discussion comments)
+            updates_endpoint = f"/{project_encoded}/_apis/wit/workItems/{bug_id}/updates?api-version=7.1"
+            
+            # Call Azure DevOps API directly
+            response = await self.call_ado_api(updates_endpoint)
+            
+            if response.get("success") == False:
+                return {
+                    "success": False,
+                    "error": response.get("error", "Failed to fetch work item updates"),
+                    "comment_data": None,
+                    "important_comments": [],
+                    "alternative_comments": [],
+                    "selection_criteria": "Error fetching comments"
+                }
+            
+            # Extract updates from response
+            updates = response.get("value", [])
+            
+            if not updates:
+                return {
+                    "success": True,
+                    "comment_data": None,
+                    "important_comments": [],
+                    "alternative_comments": [],
+                    "latest_comment_data": None,
+                    "selection_criteria": "No comments available",
+                    "total_comments": 0
+                }
+            
+            # Extract all valid comments with scoring
+            all_comments = []
+            
+            # Process updates from newest to oldest
+            for update in reversed(updates):
+                # Look for updates that contain discussion comments
+                fields = update.get("fields", {})
+                history_field = fields.get("System.History", {})
+                
+                # Check if this update has a history/discussion entry
+                if history_field and history_field.get("newValue"):
+                    comment_text = history_field.get("newValue", "").strip()
+                    
+                    # Skip empty comments or system-generated updates
+                    if (comment_text and 
+                        len(comment_text) > 0 and 
+                        not comment_text.startswith("Associated with commit") and
+                        not comment_text.startswith("Associated with changeset")):
+                        
+                        # Get author information
+                        revised_by = update.get("revisedBy", {})
+                        author_name = revised_by.get("displayName", "Unknown")
+                        
+                        # Get revision date
+                        revised_date = update.get("revisedDate", "")
+                        
+                        # Calculate importance score
+                        importance_score = self._calculate_comment_importance_score(comment_text)
+                        
+                        comment_obj = {
+                            "text": comment_text,
+                            "created_date": revised_date,
+                            "created_by": author_name,
+                            "revision": update.get("rev", 0),
+                            "importance_score": importance_score
+                        }
+                        
+                        all_comments.append(comment_obj)
+            
+            if not all_comments:
+                return {
+                    "success": True,
+                    "comment_data": None,
+                    "important_comments": [],
+                    "alternative_comments": [],
+                    "latest_comment_data": None,
+                    "selection_criteria": "No valid comments found",
+                    "total_comments": 0
+                }
+            
+            # Sort comments by importance score (highest first)
+            all_comments.sort(key=lambda x: x["importance_score"], reverse=True)
+            
+            # Determine comment type based on score
+            def get_comment_type(score):
+                if score >= 50:
+                    return "Implementation Details"
+                elif score >= 30:
+                    return "Technical Analysis"
+                elif score >= 20:
+                    return "Investigation Notes"
+                elif score >= 10:
+                    return "Status Update"
+                else:
+                    return "General Comment"
+            
+            # Filter comments that meet importance threshold
+            important_comments = [
+                comment for comment in all_comments 
+                if comment["importance_score"] >= min_importance_score
+            ]
+            
+            # If no comments meet threshold, include top 1-2 comments anyway
+            if not important_comments:
+                important_comments = all_comments[:2]
+                selection_criteria = f"No comments above threshold {min_importance_score}, showing top {len(important_comments)} comments"
+            else:
+                selection_criteria = f"Found {len(important_comments)} comments above importance threshold {min_importance_score}"
+            
+            # Select primary comment (highest scoring from important comments)
+            primary_comment = important_comments[0] if important_comments else all_comments[0]
+            
+            # Get latest comment (most recent chronologically)
+            latest_comment = max(all_comments, key=lambda x: x.get("revision", 0))
+            
+            # Format important comments for display
+            formatted_important_comments = []
+            for i, comment in enumerate(important_comments):
+                formatted_comment = {
+                    "text": comment["text"],
+                    "created_date": comment["created_date"],
+                    "created_by": comment["created_by"],
+                    "comment_type": get_comment_type(comment["importance_score"]),
+                    "importance_score": comment["importance_score"],
+                    "is_primary": i == 0,  # Mark the first (highest scoring) as primary
+                    "display_priority": i + 1
+                }
+                formatted_important_comments.append(formatted_comment)
+            
+            # Format response with enhanced data
+            result = {
+                "success": True,
+                "comment_data": {
+                    "text": primary_comment["text"],
+                    "created_date": primary_comment["created_date"],
+                    "created_by": primary_comment["created_by"],
+                    "comment_type": get_comment_type(primary_comment["importance_score"]),
+                    "importance_score": primary_comment["importance_score"]
+                } if primary_comment else None,
+                "important_comments": formatted_important_comments,
+                "alternative_comments": [
+                    {
+                        "text": comment["text"][:200] + "..." if len(comment["text"]) > 200 else comment["text"],
+                        "created_by": comment["created_by"],
+                        "created_date": comment["created_date"],
+                        "comment_type": get_comment_type(comment["importance_score"]),
+                        "importance_score": comment["importance_score"]
+                    }
+                    for comment in all_comments[len(important_comments):len(important_comments)+3]  # Next 3 as alternatives
+                ],
+                "latest_comment_data": {
+                    "text": latest_comment["text"],
+                    "created_date": latest_comment["created_date"],
+                    "created_by": latest_comment["created_by"],
+                    "comment_type": get_comment_type(latest_comment["importance_score"]),
+                    "importance_score": latest_comment["importance_score"]
+                } if latest_comment and latest_comment != primary_comment else None,
+                "selection_criteria": selection_criteria,
+                "total_comments": len(all_comments),
+                "comments_above_threshold": len(important_comments),
+                "threshold_used": min_importance_score,
+                "project": project_name
+            }
+            
+            logger.info(f"Enhanced scoring found {len(important_comments)} important comments for bug {bug_id} (threshold: {min_importance_score})")
+            
+            return result
+                
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout fetching work item updates for bug {bug_id}")
+            return {
+                "success": False,
+                "error": "Request timeout while fetching comments",
+                "comment_data": None
+            }
+        except Exception as e:
+            logger.error(f"Error fetching work item updates for bug {bug_id}: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Something went wrong while fetching comments: {str(e)}",
+                "comment_data": None
+            }
+    
+    def _calculate_comment_importance_score(self, comment_text: str) -> int:
+        """
+        Enhanced importance scoring for intelligent comment prioritization
+        Specifically designed to surface technical root cause analysis like the Mahalingam example
+        Higher scores = more technically valuable comments
+        """
+        if not comment_text:
+            return 0
+        
+        text_lower = comment_text.lower()
+        score = 10  # Base score for any comment
+        
+        # ROOT CAUSE ANALYSIS - Highest priority (+35 points)
+        root_cause_phrases = [
+            "root cause analysis", "root cause", "analysis indicates", "analysis revealed",
+            "our analysis", "investigation shows", "discovered that", "found that",
+            "the issue is caused by", "underlying cause", "primary cause"
+        ]
+        for phrase in root_cause_phrases:
+            if phrase in text_lower:
+                score += 35
+                break
+        
+        # CROSS-SYSTEM ANALYSIS - High value technical content (+30 points)
+        cross_system_indicators = [
+            "plau", "pluk", "pl global", "system comparison", "other systems",
+            "similar issue in", "same issue in", "across systems", "multiple systems"
+        ]
+        for indicator in cross_system_indicators:
+            if indicator in text_lower:
+                score += 30
+                break
+        
+        # TECHNICAL IMPLEMENTATION DETAILS - High technical value (+28 points)
+        implementation_details = [
+            "class and", "attribute", "element class", "aria-current", "highlighting functionality",
+            "implementation", "code changes", "staged", "committed", "introduced files",
+            "new files", "tocHighlightedElement", "dynamically", "scrolling"
+        ]
+        for detail in implementation_details:
+            if detail in text_lower:
+                score += 28
+                break
+        
+        # INVESTIGATION PROCESS - Shows analytical thinking (+25 points)
+        investigation_keywords = [
+            "attempted to validate", "we observed", "as illustrated below", "based on",
+            "following internal discussions", "it was decided", "we attempted", "however we observed"
+        ]
+        for keyword in investigation_keywords:
+            if keyword in text_lower:
+                score += 25
+                break
+        
+        # TECHNICAL SOLUTION DETAILS - Actionable technical content (+22 points)
+        solution_keywords = [
+            "to fix", "solution", "workaround", "to address", "to resolve",
+            "fix implemented", "changes made", "approach taken", "method used"
+        ]
+        for keyword in solution_keywords:
+            if keyword in text_lower:
+                score += 22
+                break
+        
+        # SYSTEM REFERENCES - Technical context (+20 points)
+        system_references = [
+            "document display page", "search results page", "table of contents",
+            "multi-level hierarchy", "collapsible", "focus behavior", "highlighting"
+        ]
+        for ref in system_references:
+            if ref in text_lower:
+                score += 20
+                break
+        
+        # Visual content with context (+25 points)
+        visual_indicators = [
+            "as illustrated below", "image", "screenshot", "attached", "picture", 
+            "visual", "see attached", "[image]", "screen capture", "refer to the attached"
+        ]
+        for indicator in visual_indicators:
+            if indicator in text_lower:
+                score += 25
+                break
+        
+        # CODE AND TECHNICAL ARTIFACTS (+18 points)
+        code_indicators = [
+            "function", "method", "class", "variable", "code", "script", "query",
+            "file", "path", "folder", "directory", "config", ".js", ".html", 
+            ".css", ".py", ".java", ".cs", "src/", "app/", "component"
+        ]
+        for indicator in code_indicators:
+            if indicator in text_lower:
+                score += 18
+                break
+        
+        # TECHNICAL ANALYSIS TERMS (+15 points)
+        technical_terms = [
+            "api", "database", "server", "client", "service", "endpoint", 
+            "performance", "memory", "cpu", "network", "timeout", "error", "exception",
+            "browser", "dom", "html", "css", "javascript", "frontend", "backend"
+        ]
+        for term in technical_terms:
+            if term in text_lower:
+                score += 15
+                break
+        
+        # BONUS for LENGTH - Longer comments often have more technical detail
+        if len(comment_text) > 500:  # Long detailed comments
+            score += 10
+        elif len(comment_text) > 200:  # Medium length comments  
+            score += 5
+        
+        # BONUS for SPECIFIC PRODUCT/SYSTEM NAMES (shows cross-system knowledge)
+        if any(system in text_lower for system in ["plau", "pluk", "pl global"]):
+            score += 15
+        
+        # BONUS for TECHNICAL KEYWORDS DENSITY
+        technical_density_words = [
+            "technical", "implementation", "development", "analysis", "investigation",
+            "architecture", "design", "algorithm", "framework", "library", "component"
+        ]
+        density_count = sum(1 for word in technical_density_words if word in text_lower)
+        score += density_count * 3  # 3 points per technical word
+        
+        # Apply penalties for low-value content
+        
+        # Simple closure penalty (-20 for brief, -10 for moderate)
+        closure_phrases = [
+            "closing the bug", "bug closed", "issue closed", "resolved", 
+            "closing this", "bug is closed", "issue resolved", "marking as complete"
+        ]
+        for phrase in closure_phrases:
+            if phrase in text_lower:
+                if len(comment_text) < 50:  # Brief closure
+                    score -= 20
+                else:  # Moderate closure with some context
+                    score -= 10
+                break
+        
+        # Low-value phrase penalty (stronger penalties)
+        low_value_phrases = [
+            "thanks", "thank you", "looks good", "approved", "lgtm", 
+            "ok", "fine", "agreed", "yes", "no problem", "+1"
+        ]
+        for phrase in low_value_phrases:
+            if phrase in text_lower:
+                if len(comment_text) < 30:  # Very brief low-value comment
+                    score -= 18
+                else:  # Longer comment with low-value phrase
+                    score -= 8
+                break
+        
+        # Status update without technical context penalty
+        status_only_phrases = [
+            "assigned to", "bug assigned", "status changed", "priority changed",
+            "moved to", "transferred to", "state changed"
+        ]
+        for phrase in status_only_phrases:
+            if phrase in text_lower and len(comment_text) < 100:
+                score -= 15  # Penalize brief status updates more heavily
+                break
+        
+        # Emoji-only or very short comments penalty
+        if len(comment_text) < 10:
+            score -= 10
+        
+        # Ensure minimum score but allow negatives for truly low-value content
+        return max(score, 1)
+    
     async def get_recent_bugs(self, days: int = 90) -> Dict[str, Any]:
         """Get bugs from the last N days across projects"""
         end_date = datetime.now()
