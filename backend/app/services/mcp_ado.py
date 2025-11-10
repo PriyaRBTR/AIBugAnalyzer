@@ -513,6 +513,107 @@ class MCPAdoService:
                 "bug_details": {}
             }
     
+    async def get_bug_comments(self, project_name: str, bug_id: int) -> Dict[str, Any]:
+        """Get comments for a specific bug from Azure DevOps Discussion section"""
+        logger.info(f"Fetching discussion comments for bug {bug_id} in project {project_name}")
+        
+        try:
+            project_encoded = quote(project_name)
+            
+            # Azure DevOps API endpoint for work item updates (includes discussion comments)
+            updates_endpoint = f"/{project_encoded}/_apis/wit/workItems/{bug_id}/updates?api-version=7.1"
+            
+            # Call Azure DevOps API directly
+            response = await self.call_ado_api(updates_endpoint)
+            
+            if response.get("success") == False:
+                return {
+                    "success": False,
+                    "error": response.get("error", "Failed to fetch work item updates"),
+                    "comment": None
+                }
+            
+            # Extract updates from response
+            updates = response.get("value", [])
+            
+            if not updates:
+                return {
+                    "success": True,
+                    "comment": None,
+                    "message": "No comments available for the selected bug",
+                    "total_comments": 0
+                }
+            
+            # Find the most recent update with a discussion comment
+            latest_comment = None
+            comment_count = 0
+            
+            # Process updates from newest to oldest to find the last comment
+            for update in reversed(updates):
+                # Look for updates that contain discussion comments
+                fields = update.get("fields", {})
+                history_field = fields.get("System.History", {})
+                
+                # Check if this update has a history/discussion entry
+                if history_field and history_field.get("newValue"):
+                    comment_text = history_field.get("newValue", "").strip()
+                    
+                    # Skip empty comments or system-generated updates
+                    if (comment_text and 
+                        len(comment_text) > 0 and 
+                        not comment_text.startswith("Associated with commit") and
+                        not comment_text.startswith("Associated with changeset")):
+                        
+                        # Found a valid comment
+                        comment_count += 1
+                        
+                        if latest_comment is None:  # This is the most recent comment
+                            # Get author information
+                            revised_by = update.get("revisedBy", {})
+                            author_name = revised_by.get("displayName", "Unknown")
+                            
+                            # Get revision date
+                            revised_date = update.get("revisedDate", "")
+                            
+                            latest_comment = {
+                                "text": comment_text,
+                                "created_date": revised_date,
+                                "created_by": author_name,
+                                "revision": update.get("rev", 0)
+                            }
+                            
+                            logger.info(f"Found latest comment for bug {bug_id} by {author_name}: {comment_text[:100]}...")
+            
+            if latest_comment:
+                return {
+                    "success": True,
+                    "comment": latest_comment,
+                    "total_comments": comment_count,
+                    "project": project_name
+                }
+            else:
+                return {
+                    "success": True,
+                    "comment": None,
+                    "message": "No comments available for the selected bug",
+                    "total_comments": 0
+                }
+                
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout fetching work item updates for bug {bug_id}")
+            return {
+                "success": False,
+                "error": "Request timeout while fetching comments",
+                "comment": None
+            }
+        except Exception as e:
+            logger.error(f"Error fetching work item updates for bug {bug_id}: {str(e)}")
+            return {
+                "success": False,
+                "error": f"Something went wrong while fetching comments: {str(e)}",
+                "comment": None
+            }
+    
     async def get_recent_bugs(self, days: int = 90) -> Dict[str, Any]:
         """Get bugs from the last N days across projects"""
         end_date = datetime.now()

@@ -26,6 +26,7 @@ class RootCauseAnalysisRequest(BaseModel):
     to_date: Optional[str] = None
     analysis_depth: str = "standard"  # standard, detailed, comprehensive
     bug_id: Optional[str] = None  # New: Individual bug analysis by ID
+    include_comment: bool = False  # New: Include last comment from Azure DevOps
 
 @router.post("/root-cause-analysis")
 async def perform_root_cause_analysis(
@@ -79,7 +80,9 @@ async def perform_root_cause_analysis(
                 analysis_depth=request.analysis_depth,
                 ai_service=ai_service,
                 project_name=request.project_name,
-                area_path=request.area_path
+                area_path=request.area_path,
+                include_comment=request.include_comment,
+                mcp_service=mcp_service
             )
         
         # Standard bulk analysis (existing functionality preserved)
@@ -857,7 +860,9 @@ async def _analyze_individual_bug(
     analysis_depth: str,
     ai_service: AIService,
     project_name: str,
-    area_path: Optional[str]
+    area_path: Optional[str],
+    include_comment: bool = False,
+    mcp_service: Optional[MCPAdoService] = None
 ) -> Dict[str, Any]:
     """
     Analyze a specific bug by ID with meaningful individual analysis
@@ -912,7 +917,8 @@ async def _analyze_individual_bug(
         elif analysis_depth == "comprehensive":
             analysis_result.update(await _comprehensive_individual_analysis(target_bug, ai_service, bugs))
         
-        return {
+        # Prepare base response
+        response = {
             "analysis": analysis_result,
             "bug_details": _format_bug_details(target_bug),
             "project": project_name,
@@ -920,6 +926,46 @@ async def _analyze_individual_bug(
             "analysis_depth": analysis_depth,
             "success": True
         }
+        
+        # Fetch comment if requested
+        if include_comment and mcp_service:
+            try:
+                logger.info(f"Fetching comment for bug {bug_id}")
+                comment_result = await mcp_service.get_bug_comments(project_name, int(bug_id))
+                
+                if comment_result.get("success"):
+                    if comment_result.get("comment"):
+                        # Format comment data for frontend display
+                        comment_data = comment_result["comment"]
+                        response["comment_data"] = {
+                            "comment_text": comment_data.get("text", ""),
+                            "author": comment_data.get("created_by", "Unknown"),
+                            "created_date": comment_data.get("created_date", ""),
+                            "status": target_bug.get("state", "Unknown")  # Add current bug state for context
+                        }
+                        response["comment_status"] = "found"
+                        logger.info(f"Successfully fetched comment for bug {bug_id} from {comment_data.get('created_by', 'Unknown')}")
+                    else:
+                        response["comment_status"] = "none"
+                        response["comment_message"] = comment_result.get("message", "No comments available for the selected bug")
+                        logger.info(f"No comments found for bug {bug_id}")
+                else:
+                    # API error - distinguish from no comments
+                    response["comment_status"] = "error"
+                    response["comment_error"] = comment_result.get("error", "Failed to fetch comments")
+                    logger.warning(f"Failed to fetch comments for bug {bug_id}: {comment_result.get('error')}")
+                    
+            except Exception as comment_error:
+                logger.error(f"Exception while fetching comments for bug {bug_id}: {str(comment_error)}")
+                response["comment_status"] = "error"
+                response["comment_error"] = f"Something went wrong while fetching comments: {str(comment_error)}"
+        elif include_comment and not mcp_service:
+            response["comment_status"] = "error"
+            response["comment_error"] = "Comment service not available"
+        else:
+            response["comment_status"] = "not_requested"
+        
+        return response
         
     except Exception as e:
         logger.error(f"Error analyzing individual bug {bug_id}: {str(e)}")
